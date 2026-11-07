@@ -60,7 +60,7 @@ Set-Location C:\Users\Dell\UnnaVora\services\api
 ```powershell
 java -Xmx448m -jar target\unavora-api-0.1.0-SNAPSHOT.jar --spring.profiles.active=local
 ```
-Ready when the log shows `Started UnavoraApplication`. Flyway applies V1–V9 and the synthetic seed. The `local` profile uses the **mock** Google and **mock** WhatsApp adapters.
+Ready when the log shows `Started UnavoraApplication`. Flyway applies V1–V12 and the synthetic seed. The `local` profile uses the **mock** Google and **mock** WhatsApp adapters.
 
 ### 3. Web (terminal 2)
 Run Next directly with `node`. On this PC, `npm run …` picks up an old Node 18 from `C:\Users\Dell\node_modules\.bin` (see Troubleshooting).
@@ -116,7 +116,7 @@ $env:MAVEN_OPTS = "-Xmx384m"
 ```powershell
 & $mvn -B verify
 ```
-Expected: 4 architecture tests + 39 integration tests, `BUILD SUCCESS`.
+Expected: 5 architecture tests + 74 integration tests, `BUILD SUCCESS`.
 
 **Web** type-check and unit tests:
 ```powershell
@@ -155,7 +155,9 @@ docker compose stop keycloak
 
 Local staff users (Keycloak dev realm, synthetic): `director.local`, `employee1.local`, `employee2.local`, plus `outsider.local` (exists in Keycloak but is NOT invited to the CRM, for testing). The passwords are in `infra/local/keycloak/unavora-dev-realm.json` and must never be reused.
 
-**Staff CRM** (start `keycloak` first): open http://localhost:3000/en/staff and sign in. The director also needs an authenticator code: add the synthetic secret from the realm file to an authenticator app, or let the tests/scripts generate it (RFC 6238, HMAC-SHA1, 30 s, key = the secret's UTF-8 bytes). Keycloak accepts each code only once per 30 s window.
+**Manual browser testing:** realistic synthetic CRM data and step-by-step test cases are in [docs/MANUAL_UI_TESTING.md](docs/MANUAL_UI_TESTING.md) (load/reset the data with `infra/local/manual-test-data.sql`).
+
+**Staff CRM** (start `keycloak` first): open http://localhost:3000/en/staff and sign in. The director also needs an authenticator code: run `python infra\local\scripts\director_totp.py` (prints the current code; `--setup` prints a key for an authenticator app), or let the tests/scripts generate it (RFC 6238, HMAC-SHA1, 30 s, key = the secret's UTF-8 bytes). Keycloak accepts each code only once per 30 s window.
 
 ---
 

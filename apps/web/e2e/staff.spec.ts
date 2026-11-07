@@ -1,5 +1,6 @@
 import { createHmac } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
+import { API } from "./staff-helpers";
 
 // Requires the local stack: API (local profile), web, and the Keycloak dev realm (synthetic users).
 // Real Keycloak sign-in in the browser: password for employees, password + TOTP for the director.
@@ -109,7 +110,7 @@ test("a Keycloak user who was not invited to the CRM is refused", async ({ page 
   expect((await page.context().cookies()).some((c) => c.name.endsWith("uai_staff"))).toBe(false);
 });
 
-test("director must pass TOTP; wrong code is rejected; with the code the company-wide dashboard opens", async ({ page }) => {
+test("director must pass TOTP; wrong code is rejected; with the code the company-wide dashboard opens", async ({ page, request }) => {
   test.setTimeout(120_000);
   await page.goto("/en/staff/login");
   await page.getByRole("link", { name: "Sign in with company account" }).click();
@@ -125,7 +126,12 @@ test("director must pass TOTP; wrong code is rejected; with the code the company
   await expect(page.getByTestId("mfa-badge")).toBeVisible();
   await expect(page.getByTestId("lead-list")).toBeVisible();   // company-wide list (paged; LEAD-LOCAL-2 checked by id below)
   await page.getByRole("link", { name: "Director overview" }).click();
-  await expect(page.getByTestId("kpi-published")).toHaveText("4");
+  // the KPI must equal what the public site actually lists (the local DB may hold extra manual-test listings)
+  const listed = await request.get(`${API}/api/v1/public/properties?limit=100`);
+  expect(listed.ok()).toBeTruthy();
+  const body = await listed.json();
+  expect(body.nextCursor).toBeNull();
+  await expect(page.getByTestId("kpi-published")).toHaveText(String(body.items.length));
   await expect(page.getByTestId("stage-funnel")).toBeVisible();
   await page.goto(`/en/staff/leads/${FOREIGN_LEAD}`);
   await expect(page.getByTestId("lead-reference")).toHaveText("LEAD-LOCAL-2");

@@ -167,7 +167,7 @@ Precondition: CI run #3 on `7a2ea1a` green (owner screenshot) before coding star
 
 Fixed during Slice 3: text-block concatenation `:meRETURNING` in follow-up completion (500 for employees); test asserted a mock-only URL parameter (now checks S256 against the stored verifier); **API failed to start in the `local` profile because the staff issuer defaulted only to an unset `OIDC_ISSUER_URI`** (now defaults to the resource-server issuer); Playwright locator ambiguous with Next's hidden route announcer; Playwright pinned to 1 worker so mobile/desktop director logins never reuse a TOTP window; repeated shell cwd race when starting two background servers in parallel (started sequentially).
 
-## 11. Slice 4: complete real-estate lead workflow (2026-11-07, uncommitted)
+## 11. Slice 4: complete real-estate lead workflow (2026-11-07, commit `71803d8` + test fixes, CI green on `f888bba`)
 Precondition: working tree clean at `7a43f9e`; CI for `7a43f9e` green (owner confirmation) before coding.
 
 | Suite | Status | Evidence |
@@ -199,3 +199,23 @@ Found and fixed during Slice 4:
 - **Staff sign-in rate limit (30 / 10 min / IP) was too low for an office behind one NAT** and was hit by repeated local test runs: now configurable, default 60, local profile 200.
 - Slice 3 browser tests assumed the seeded lead is on page 1 of the paged list; they now open seeded leads by id (data grows with every local run; CI starts empty).
 - A duplicate `updated_at` trigger in my first V11 draft (already present in V5) was removed before it ever ran; the `id_token_hint` column went to V12 because V11 had already been applied locally.
+
+## 12. Slice 4 follow-up: manual browser-testing data and guide (2026-11-07, uncommitted)
+
+Owner requirement from the Slice 4 request that had not been delivered: realistic synthetic data for every Slice 4
+screen and a step-by-step manual testing guide. Delivered as `infra/local/manual-test-data.sql` (re-runnable reset,
+not a Flyway migration, so the automated tests and staging/production never load it), `docs/MANUAL_UI_TESTING.md`,
+and `infra/local/scripts/director_totp.py` (prints the synthetic director code).
+
+| Check | Result | Notes |
+|---|---|---|
+| Data script on the local DB, run 3 times in a row | PASS | 8 customers, 17 leads (every stage, both employees, 2 unassigned), 9 visits (upcoming, today, past-due, completed, cancelled, no-show), 9 follow-ups (overdue / today / upcoming, priorities, visit-linked, one done), 4 recorded contacts, 4 extra published properties; every lead's last stage-history row equals its current stage |
+| Same script from PowerShell exactly as written in the guide | PASS | `docker cp` + `docker exec … psql -f`; also `director_totp.py` and the outbox query |
+| Guard: script against a database without the synthetic seed users | PASS (refused) | psql exit code 3, nothing changed |
+| `director_totp.py` | PASS | same code as the flow script's algorithm for the same instant |
+| Temporary browser walk-through of the guide on the seeded data (desktop; not committed) | PASS with 1 guide correction | B1–B8, C2–C8, D1, D3–D4, E1–E8, F1, F3, H1–H3 as written. Findings fixed in the guide: B6/C5/C9 wording (no form vs. error message), and lists are newest-first with 20 per page, so leads left by automated tests can push `LEAD-MAN-…` off page 1 (guide now says to use the direct URLs/filters) |
+| Temporary seeded-screen check, mobile + desktop (not committed) | PASS 4/4 | dashboards, visit list, follow-ups, lead/visit pages, director overview, Hindi dashboard |
+| Full Playwright with the manual data loaded | **FAIL**, then PASS 34/34 | (1) `staff.spec` hard-coded "4 published properties": now compares the KPI with the public API's actual count (works with or without the extra listings). (2) My data's "today" visit, clamped to 23:45 IST, fell within 60 min of the visit the e2e test books, and the API correctly refused it (conflict rule). Clamp removed: seeded visits stay ≥2.5 h from that slot. Then 34/34 |
+| Business-flow scripts with the manual data loaded | PASS 19/19, 25/25 | |
+| Web `tsc`, Vitest | PASS, 3/3 | |
+| `mvn verify` | NOT RE-RUN | no backend code or migration changed since `f888bba` (CI green: 79/79); CI will run it on push |
