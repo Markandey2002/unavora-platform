@@ -9,7 +9,7 @@ import java.util.Set;
 interface StaffIdentityProvider {
 
     /** Facts taken from a verified ID token (signature, issuer, audience, expiry and nonce already checked). */
-    record VerifiedIdentity(String subject, Set<String> authMethods) {
+    record VerifiedIdentity(String subject, Set<String> authMethods, String idToken) {
         boolean hasSecondFactor() {
             return authMethods.contains("otp") || authMethods.contains("mfa") || authMethods.contains("hwk");
         }
@@ -20,4 +20,10 @@ interface StaffIdentityProvider {
 
     /** Exchanges the code with the PKCE verifier and validates the returned ID token against {@code expectedNonce}. */
     VerifiedIdentity exchange(String code, String codeVerifier, String expectedNonce);
+
+    /**
+     * OIDC RP-initiated logout URL that also ends the provider single sign-on session, or null if not supported.
+     * {@code state} is passed back to the post-logout redirect (used for the UI language).
+     */
+    String endSessionUrl(String idTokenHint, String state);
 }

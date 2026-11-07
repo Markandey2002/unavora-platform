@@ -11,13 +11,13 @@ Internet → CloudFront/WAF → ALB → Next.js (web) and Spring Boot (api, port
 | AuthN (staff) | OIDC (Keycloak local, Cognito later); API is a stateless JWT resource server; invitation-only accounts | PASS locally with real Keycloak tokens (flow script) |
 | AuthN (customers) | Continue with Google via BFF (PKCE, state, nonce); API verifies ID token; mock adapter locally | Mock PASS; real Google NOT RUN |
 | Browser sessions (customers) | Opaque token, SHA-256 at rest, HttpOnly SameSite=Lax cookie (`__Host-` + Secure on HTTPS), 7 d idle / 30 d absolute, logout revokes | PASS (Playwright checks HttpOnly, not readable by JS) |
-| Browser sessions (staff) | BFF + API Authorization Code + PKCE (verifier/nonce server-side), IdP tokens discarded, opaque session (SHA-256 at rest) in HttpOnly SameSite=Lax cookie (`__Host-` on HTTPS), 30 min idle / 12 h absolute (8 h MFA roles), revoked on logout, ended when user disabled | PASS (StaffSessionIT, Playwright) |
+| Browser sessions (staff) | BFF + API Authorization Code + PKCE (verifier/nonce server-side), IdP tokens discarded, opaque session (SHA-256 at rest) in HttpOnly SameSite=Lax cookie (`__Host-` on HTTPS), 30 min idle / 12 h absolute (8 h MFA roles), revoked on logout together with the IdP single sign-on session (OIDC RP-initiated logout; `id_token_hint` kept server-side only and erased), ended when user disabled | PASS (StaffSessionIT, Playwright) |
 | BFF → API | `/internal/v1/**` separate filter chain, service credential (constant-time compare), bearer refused | PASS (CustomerIdentityIT) |
 | CSRF (BFF) | Server actions: Next origin check; route handlers: Origin must equal site; SameSite=Lax | PASS (cross-origin logout → 403) |
 | AuthZ | Roles/permissions in PostgreSQL, `@PreAuthorize("@access.has(..)")`, evaluated per request | PASS |
 | Record-level | Employee queries filtered by assignment (leads, customers); foreign records → 404 | PASS |
 | Public API | Only `/api/v1/public/**`; others require token; validation on all inputs; RFC 7807 errors without internals (framework 4xx keep status) | PASS (SecurityIT) |
-| Abuse | Per-visitor in-memory limiter on enquiries (BFF forwards visitor IP) and Google login; OTP: 30 s resend, 5/hour, 5 attempts; WAF rate rules in AWS | PASS locally / designed |
+| Abuse | Staff sign-in limiter per IP (configurable, default 60 / 10 min for office NAT); per-visitor in-memory limiter on enquiries (BFF forwards visitor IP) and Google login; OTP: 30 s resend, 5/hour, 5 attempts; WAF rate rules in AWS | PASS locally / designed |
 | OTP secrecy | Code never stored or logged; HMAC-SHA256(secret, id:code) | PASS |
 | Privacy | Consent recorded with notice version; outbox payloads carry ids only; IP stored as SHA-256 hash | Implemented (hash is unsalted, add a secret salt before production) |
 | Audit | Append-only `audit_logs`; lead views and public lead creation logged | Partially implemented |

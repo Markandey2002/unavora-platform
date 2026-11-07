@@ -25,7 +25,13 @@ class MockStaffIdentityProvider implements StaffIdentityProvider {
         if (p.length != 4 || !"mock-code".equals(p[0]) || !expectedNonce.equals(p[3]) || codeVerifier == null || codeVerifier.length() < 43) {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "login_failed", "Sign-in could not be completed. Please try again.");
         }
-        return new VerifiedIdentity(p[1], new LinkedHashSet<>(Arrays.stream(p[2].split(",")).filter(s -> !s.isBlank()).toList()));
+        return new VerifiedIdentity(p[1], new LinkedHashSet<>(Arrays.stream(p[2].split(",")).filter(s -> !s.isBlank()).toList()),
+                "mock-id-token-" + p[1]);
+    }
+
+    @Override
+    public String endSessionUrl(String idTokenHint, String state) {
+        return idTokenHint == null ? null : "http://mock-idp.test/logout?state=" + enc(state);
     }
 
     private static String enc(String s) { return URLEncoder.encode(s, StandardCharsets.UTF_8); }

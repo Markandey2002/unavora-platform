@@ -12,11 +12,13 @@ spring:
   security.oauth2.resourceserver.jwt.issuer-uri: ${OIDC_ISSUER_URI:http://localhost:8180/realms/unavora-dev}
 unavora:
   cors-allowed-origins: http://localhost:3000
+  rate-limit.staff-signin-per-ip-per-10min: 200   # LOCAL: repeated browser test runs from one machine
   internal.service-token: ${INTERNAL_SERVICE_TOKEN:local-dev-internal-token-not-a-secret}
   customer-auth.google.mode: ${CUSTOMER_GOOGLE_MODE:mock}     # MOCK: no Google account is contacted
   staff-auth:                                                  # LOCAL Keycloak dev realm (synthetic users)
     client-secret: ${STAFF_OIDC_CLIENT_SECRET:web-bff-local-dev-secret}
     redirect-uri: ${STAFF_OIDC_REDIRECT_URI:http://localhost:3000/_bff/staff/callback}
+    post-logout-redirect-uri: ${STAFF_OIDC_POST_LOGOUT_REDIRECT_URI:http://localhost:3000/_bff/staff/signed-out}
   otp:
     whatsapp.mode: ${WHATSAPP_OTP_MODE:mock}                  # MOCK: no WhatsApp message is sent
     secret: ${OTP_HMAC_SECRET:local-dev-otp-hmac-secret-not-a-secret}

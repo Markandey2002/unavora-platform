@@ -13,10 +13,11 @@ class StaffAuthConfig {
                                                 @Value("${unavora.staff-auth.issuer-uri:}") String issuer,
                                                 @Value("${unavora.staff-auth.client-id:}") String clientId,
                                                 @Value("${unavora.staff-auth.client-secret:}") String clientSecret,
-                                                @Value("${unavora.staff-auth.redirect-uri:}") String redirectUri) {
+                                                @Value("${unavora.staff-auth.redirect-uri:}") String redirectUri,
+                                                @Value("${unavora.staff-auth.post-logout-redirect-uri:}") String postLogoutRedirectUri) {
         return switch (mode) {
             case "mock" -> new MockStaffIdentityProvider();
-            case "oidc" -> new OidcStaffIdentityProvider(issuer, clientId, clientSecret, redirectUri);
+            case "oidc" -> new OidcStaffIdentityProvider(issuer, clientId, clientSecret, redirectUri, postLogoutRedirectUri);
             default -> throw new IllegalStateException("Unknown unavora.staff-auth.mode: " + mode);
         };
     }

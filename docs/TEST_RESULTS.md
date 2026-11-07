@@ -166,3 +166,30 @@ Precondition: CI run #3 on `7a2ea1a` green (owner screenshot) before coding star
 | GitHub CI on the Slice 3 commit | **PASS** | commit `5624342` pushed with owner approval; CI run #4 all 4 jobs green (owner confirmation): secret scan, API 60 tests, web build, end-to-end incl. Playwright 26 with real Keycloak TOTP and both flow scripts |
 
 Fixed during Slice 3: text-block concatenation `:meRETURNING` in follow-up completion (500 for employees); test asserted a mock-only URL parameter (now checks S256 against the stored verifier); **API failed to start in the `local` profile because the staff issuer defaulted only to an unset `OIDC_ISSUER_URI`** (now defaults to the resource-server issuer); Playwright locator ambiguous with Next's hidden route announcer; Playwright pinned to 1 worker so mobile/desktop director logins never reuse a TOTP window; repeated shell cwd race when starting two background servers in parallel (started sequentially).
+
+## 11. Slice 4: complete real-estate lead workflow (2026-11-07, uncommitted)
+Precondition: working tree clean at `7a43f9e`; CI for `7a43f9e` green (owner confirmation) before coding.
+
+| Suite | Status | Evidence |
+|---|---|---|
+| Flyway V11 (lead workflow) + V12 (IdP logout hint) | PASS | applied out-of-order on the existing local DB; fresh in Testcontainers |
+| `mvn clean verify` | **PASS 79/79** | 5 ArchUnit + 74 ITs, incl. **LeadWorkflowIT 19/19** (below) and the updated StaffSessionIT 16/16 |
+| LeadWorkflowIT: migration / DB rules | PASS | trigger refuses Lost/Invalid history without reason; duplicate open follow-up refused by unique index (case-insensitive title); completion before scheduled time refused by CHECK; `visit.manage_all` granted to director only |
+| LeadWorkflowIT: stage transitions | PASS | assigned→contacted→qualified with history (from, to, actor, time), audit, timeline, outbox, `first_contacted_at`; disallowed jump → 422; same stage → 409; unknown → 422; Won → 422 `won_requires_deal`; Lost needs reason code, `other` needs note; Invalid needs note; stale `expectedVersion` → 409; reopen needs `lead.reopen` (employee 403, director OK) |
+| LeadWorkflowIT: permissions | PASS | employee 2 on employee 1's lead → 404 (stage, history); director company-wide; director bearer without OTP → 403; employees cannot assign or list assignees (403) |
+| LeadWorkflowIT: reassignment + audit | PASS | reason required; invalid assignee 422; same assignee 409; row records previous, new, actor, reason, method; old row closed; `lead.reassigned` audit; open follow-up and upcoming visit moved; stage history unchanged; previous employee 404, new employee sees full history; new unassigned lead → manual assignment moves it to Assigned |
+| LeadWorkflowIT: site visits | PASS | past >24 h / >180 days → 422; unavailable property → 422; employee scheduling for someone else → 403; conflict within 60 min → 409; lead auto → Site Visit Scheduled; director may assign to another employee; closed lead → 409; **complete/no-show before scheduled time → 409; time passing alone changes nothing**; completion stores feedback, interest, internal notes, next action, lead auto → Site Visit Completed; double completion → 409; reschedule/cancel need reasons; stale version → 409; other employee → 404; no-show after time |
+| LeadWorkflowIT: follow-ups | PASS | on a visit with priority; duplicate 409; past due 422; for another employee 403 (director allowed); no target 422; other employee's lead 404; complete twice → 409 `already_completed` |
+| LeadWorkflowIT: dashboards | PASS | employee dashboard (own stages, today's and upcoming visits, recent leads; other employee sees none of them); director overview (11 stages, leads by employee and stage, visit stats, conversion, workload); employee → 403 |
+| Web `tsc`, Vitest 3/3, `next build` | PASS | new routes: `/staff/dashboard`, `/staff/visits`, `/staff/visits/[id]`, `/_bff/staff/signed-out` |
+| **Playwright 34/34** (real Keycloak, director TOTP) | PASS | existing 26 + **lead-workflow.spec.ts 8** (4 × mobile/desktop): employee moves a fresh lead through Contacted/Qualified, Lost without reason refused in UI, Won not offered, schedules a same-day visit (lead auto-advances), completes it with feedback and internal notes (lead auto-advances), adds a high-priority follow-up, duplicate refused, sees it in My follow-ups and the dashboard; other employee gets "not found"; director (TOTP) reassigns with a reason, sees assignment and stage history and the overview (workload, conversion, visits, pipeline by employee); new employee has the lead and its follow-up, previous one does not |
+| Business-flow script / customer-signup script | PASS 19/19, 25/25 | re-run against the Slice 4 build |
+| OpenAPI 0.4.0 (`redocly lint`) | PASS | Slice 3 + Slice 4 staff endpoints documented |
+| `actionlint` on `ci.yml` | PASS | step name only |
+| GitHub CI on the Slice 4 commit | NOT RUN | not committed/pushed yet (awaiting approval) |
+
+Found and fixed during Slice 4:
+- **Sign-out did not end the Keycloak single sign-on session**, so the next person on the same browser saw a re-authentication page locked to the previous user (Playwright caught it). Now OIDC RP-initiated logout: the API keeps the ID token server-side only as `id_token_hint` (V12), erases it on logout and returns the end-session URL; the BFF sends the browser through Keycloak and back via `/_bff/staff/signed-out`.
+- **Staff sign-in rate limit (30 / 10 min / IP) was too low for an office behind one NAT** and was hit by repeated local test runs: now configurable, default 60, local profile 200.
+- Slice 3 browser tests assumed the seeded lead is on page 1 of the paged list; they now open seeded leads by id (data grows with every local run; CI starts empty).
+- A duplicate `updated_at` trigger in my first V11 draft (already present in V5) was removed before it ever ran; the `id_token_hint` column went to V12 because V11 had already been applied locally.

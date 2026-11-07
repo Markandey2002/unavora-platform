@@ -17,6 +17,7 @@ export type LeadRow = {
   id: string; reference: string; customerId: string; customerName: string; phone: string | null; stage: string;
   stageName: string; enquiryType: string; propertyTitle: string | null; priority: number; assignedUserId: string | null;
   assignedUserName: string | null; nextActionAt: string | null; nextActionNote: string | null; createdAt: string;
+  version: number; outcome: string; updatedAt: string;
 };
 export type LeadPage = { items: LeadRow[]; nextCursor: string | null };
 export type Activity = { type: string; summary: string; actorName: string | null; occurredAt: string };
@@ -36,11 +37,44 @@ export type CustomerDetail = {
 export type FollowUpItem = {
   id: string; title: string; description: string | null; dueAt: string; overdue: boolean; customerId: string;
   customerName: string; customerReference: string; leadId: string | null; leadReference: string | null;
+  priority: string; siteVisitId: string | null; siteVisitReference: string | null;
 };
 export type Overview = {
   totalLeads: number; newLast7Days: number; unassigned: number; publishedProperties: number;
   avgFirstResponseMinutes: number | null; leadsByStage: { stage: string; name: string; count: number }[];
+  leadsByEmployeeAndStage: { userId: string; name: string; stage: string; count: number }[];
+  visits: { upcoming: number; completedLast30Days: number; cancelledLast30Days: number; noShowLast30Days: number };
+  conversion: { won: number; lost: number; invalid: number; winRate: number | null; reachedQualified: number;
+    withCompletedVisit: number; visitConversion: number | null; reachedNegotiation: number };
+  workload: { userId: string; name: string; openLeads: number; openFollowUps: number; overdueFollowUps: number;
+    completedFollowUpsLast30Days: number; completedOnTimeLast30Days: number; onTimeRate: number | null; upcomingVisits: number }[];
 };
+export type Pipeline = {
+  stages: { code: string; name: string; sortOrder: number; outcome: string; requiresReason: boolean; requiresCompletedDeal: boolean }[];
+  transitions: { from: string; to: string }[];
+  lostReasons: { code: string; name: string; needsNote: boolean }[];
+};
+export type LeadHistory = {
+  stages: { fromStage: string | null; toStage: string; changedBy: string | null; reason: string | null; reasonCode: string | null; changedAt: string }[];
+  assignments: { previousUser: string | null; assignedTo: string; assignedBy: string | null; method: string; reason: string | null; assignedAt: string }[];
+};
+export type Assignee = { id: string; name: string; roles: string[] };
+export type VisitRow = {
+  id: string; reference: string; status: string; scheduledAt: string | null; completedAt: string | null; leadId: string;
+  leadReference: string; customerId: string; customerName: string; customerPhone: string | null; propertyId: string | null;
+  propertyTitle: string | null; assignedUserId: string | null; assignedUserName: string | null; locationNote: string | null; version: number;
+};
+export type VisitDetail = {
+  visit: VisitRow; feedback: string | null; interestAfter: string | null; employeeNotes: string | null; nextAction: string | null;
+  history: { fromStatus: string | null; toStatus: string; fromScheduledAt: string | null; toScheduledAt: string | null; changedBy: string | null; reason: string | null; changedAt: string }[];
+};
+export type Dashboard = {
+  myLeadsByStage: { stage: string; name: string; count: number }[];
+  todaysVisits: DashboardVisit[]; upcomingVisits: DashboardVisit[];
+  followUps: { pending: number; dueToday: number; overdue: number };
+  recentlyUpdatedLeads: { id: string; reference: string; customerName: string; stage: string; updatedAt: string }[];
+};
+export type DashboardVisit = { id: string; reference: string; scheduledAt: string; status: string; leadId: string; leadReference: string; customerName: string; propertyTitle: string | null };
 
 function headers(session?: string, extra: Record<string, string> = {}): Record<string, string> {
   const token = process.env.INTERNAL_SERVICE_TOKEN;
@@ -81,7 +115,8 @@ export const staffAuth = {
   complete: (code: string, state: string, clientIp?: string) =>
     call<{ sessionToken: string; expiresAt: string; idleTimeoutSeconds: number; language: string }>(
       "POST", "/internal/v1/staff-auth/complete", { body: { code, state }, headers: clientIp ? { "X-Forwarded-For": clientIp } : {} }),
-  logout: (session: string) => call<void>("POST", "/internal/v1/staff-auth/logout", { headers: { "X-Staff-Session": session } }),
+  logout: (session: string, language: string) =>
+    call<{ endSessionUrl: string | null }>("POST", `/internal/v1/staff-auth/logout?lang=${language === "hi" ? "hi" : "en"}`, { headers: { "X-Staff-Session": session } }),
 };
 
 export const staffApi = {
@@ -101,6 +136,22 @@ export const staffApi = {
   completeFollowUp: (s: string, id: string) =>
     call<FollowUpItem>("POST", `/internal/v1/staff/follow-ups/${encodeURIComponent(id)}/complete`, { session: s }),
   overview: (s: string) => call<Overview>("GET", "/internal/v1/director/overview", { session: s }),
+  dashboard: (s: string) => call<Dashboard>("GET", "/internal/v1/staff/dashboard", { session: s }),
+  pipeline: (s: string) => call<Pipeline>("GET", "/internal/v1/staff/pipeline", { session: s }),
+  assignees: (s: string) => call<Assignee[]>("GET", "/internal/v1/staff/assignees", { session: s }),
+  leadHistory: (s: string, id: string) => call<LeadHistory>("GET", `/internal/v1/staff/leads/${encodeURIComponent(id)}/history`, { session: s }),
+  changeStage: (s: string, id: string, body: { toStage: string; expectedVersion?: number; reasonCode?: string; note?: string }) =>
+    call<{ leadId: string; fromStage: string; toStage: string; version: number }>("POST", `/internal/v1/staff/leads/${encodeURIComponent(id)}/stage`, { session: s, body }),
+  assign: (s: string, id: string, body: { assigneeId: string; expectedVersion?: number; reason?: string }) =>
+    call<unknown>("POST", `/internal/v1/staff/leads/${encodeURIComponent(id)}/assign`, { session: s, body }),
+  visits: (s: string, p: { scope: string; leadId?: string }) => call<VisitRow[]>("GET", `/internal/v1/staff/site-visits${qs(p)}`, { session: s }),
+  visit: (s: string, id: string) => call<VisitDetail>("GET", `/internal/v1/staff/site-visits/${encodeURIComponent(id)}`, { session: s }),
+  scheduleVisit: (s: string, body: { leadId: string; scheduledAt: string; propertyId?: string; assignedUserId?: string; locationNote?: string }) =>
+    call<{ id: string; reference: string }>("POST", "/internal/v1/staff/site-visits", { session: s, body }),
+  visitAction: (s: string, id: string, action: "reschedule" | "cancel" | "complete" | "no-show", body: Record<string, unknown>) =>
+    call<{ id: string; status: string }>("POST", `/internal/v1/staff/site-visits/${encodeURIComponent(id)}/${action}`, { session: s, body }),
+  createFollowUp: (s: string, body: { leadId?: string; siteVisitId?: string; title: string; description?: string; dueAt: string; priority?: string; assignedTo?: string }) =>
+    call<{ id: string }>("POST", "/internal/v1/staff/follow-ups", { session: s, body }),
 };
 
 export function staffSessionFrom(store: { get(name: string): { value: string } | undefined }): string | undefined {

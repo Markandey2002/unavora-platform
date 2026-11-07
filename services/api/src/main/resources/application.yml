@@ -24,6 +24,7 @@ unavora:
   cors-allowed-origins: ${CORS_ALLOWED_ORIGINS:}
   rate-limit:
     enquiry-per-ip-per-hour: 10
+    staff-signin-per-ip-per-10min: 60   # an office behind one NAT shares an IP
   features:
     whatsapp-automation: false   # stays false unless an approved test provider is configured
     live-payments: false
@@ -43,6 +44,7 @@ unavora:
     client-id: ${STAFF_OIDC_CLIENT_ID:web-bff}
     client-secret: ${STAFF_OIDC_CLIENT_SECRET:}
     redirect-uri: ${STAFF_OIDC_REDIRECT_URI:}
+    post-logout-redirect-uri: ${STAFF_OIDC_POST_LOGOUT_REDIRECT_URI:}   # sign-out also ends the IdP session
   staff-session:
     idle: PT30M            # sliding
     absolute: PT12H        # hard limit

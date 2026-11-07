@@ -17,6 +17,7 @@ unavora:
     client-id: ${STAFF_OIDC_CLIENT_ID}
     client-secret: ${STAFF_OIDC_CLIENT_SECRET}
     redirect-uri: ${STAFF_OIDC_REDIRECT_URI}
+    post-logout-redirect-uri: ${STAFF_OIDC_POST_LOGOUT_REDIRECT_URI}
   otp:
     whatsapp.mode: ${WHATSAPP_OTP_MODE}
     secret: ${OTP_HMAC_SECRET}

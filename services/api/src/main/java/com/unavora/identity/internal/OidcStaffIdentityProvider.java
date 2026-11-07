@@ -33,12 +33,13 @@ class OidcStaffIdentityProvider implements StaffIdentityProvider {
     private final String clientId;
     private final String clientSecret;
     private final String redirectUri;
+    private final String postLogoutRedirectUri;
     private final RestClient http = RestClient.create();
     private volatile Discovery discovery;
 
-    private record Discovery(String authorizationEndpoint, String tokenEndpoint, NimbusJwtDecoder decoder) {}
+    private record Discovery(String authorizationEndpoint, String tokenEndpoint, String endSessionEndpoint, NimbusJwtDecoder decoder) {}
 
-    OidcStaffIdentityProvider(String issuer, String clientId, String clientSecret, String redirectUri) {
+    OidcStaffIdentityProvider(String issuer, String clientId, String clientSecret, String redirectUri, String postLogoutRedirectUri) {
         for (var e : Map.of("issuer-uri", issuer, "client-id", clientId, "client-secret", clientSecret, "redirect-uri", redirectUri).entrySet()) {
             if (e.getValue() == null || e.getValue().isBlank()) {
                 throw new IllegalStateException("unavora.staff-auth." + e.getKey() + " is required when mode=oidc");
@@ -48,6 +49,7 @@ class OidcStaffIdentityProvider implements StaffIdentityProvider {
         this.clientId = clientId;
         this.clientSecret = clientSecret;
         this.redirectUri = redirectUri;
+        this.postLogoutRedirectUri = postLogoutRedirectUri == null || postLogoutRedirectUri.isBlank() ? null : postLogoutRedirectUri;
     }
 
     @Override
@@ -99,7 +101,7 @@ class OidcStaffIdentityProvider implements StaffIdentityProvider {
             Object amr = jwt.getClaims().get("amr");
             Set<String> methods = new LinkedHashSet<>();
             if (amr instanceof Collection<?> c) c.forEach(x -> methods.add(String.valueOf(x)));
-            return new VerifiedIdentity(jwt.getSubject(), methods);
+            return new VerifiedIdentity(jwt.getSubject(), methods, s);
         } catch (JwtException e) {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "login_failed", "Sign-in could not be completed. Please try again.");
         }
@@ -125,9 +127,24 @@ class OidcStaffIdentityProvider implements StaffIdentityProvider {
             decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
                     JwtValidators.createDefaultWithIssuer(issuer),
                     new JwtClaimValidator<Collection<String>>("aud", aud -> aud != null && aud.contains(clientId))));
-            discovery = new Discovery((String) doc.get("authorization_endpoint"), (String) doc.get("token_endpoint"), decoder);
+            discovery = new Discovery((String) doc.get("authorization_endpoint"), (String) doc.get("token_endpoint"),
+                    (String) doc.get("end_session_endpoint"), decoder);
             return discovery;
         }
+    }
+
+    @Override
+    public String endSessionUrl(String idTokenHint, String state) {
+        if (idTokenHint == null || postLogoutRedirectUri == null) return null;
+        Discovery d;
+        try {
+            d = discovery();
+        } catch (ApiException e) {
+            return null;   // provider down: the CRM session is revoked anyway
+        }
+        if (d.endSessionEndpoint() == null) return null;
+        return d.endSessionEndpoint() + "?client_id=" + enc(clientId) + "&id_token_hint=" + enc(idTokenHint)
+                + "&post_logout_redirect_uri=" + enc(postLogoutRedirectUri) + "&state=" + enc(state);
     }
 
     private static String enc(String s) { return URLEncoder.encode(s, StandardCharsets.UTF_8); }

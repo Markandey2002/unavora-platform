@@ -34,7 +34,8 @@ class StaffLeadController {
 
     record LeadRow(UUID id, String reference, UUID customerId, String customerName, String phone, String stage, String stageName,
                    String enquiryType, String propertyTitle, int priority, UUID assignedUserId, String assignedUserName,
-                   OffsetDateTime nextActionAt, String nextActionNote, OffsetDateTime createdAt) {}
+                   OffsetDateTime nextActionAt, String nextActionNote, OffsetDateTime createdAt, long version,
+                   String outcome, OffsetDateTime updatedAt) {}
 
     record Activity(String type, String summary, String actorName, OffsetDateTime occurredAt) {}
 
@@ -44,7 +45,7 @@ class StaffLeadController {
             SELECT l.id, l.public_ref, l.customer_id, c.full_name, coalesce(c.whatsapp_e164, c.phone_e164) AS phone,
                    ps.code AS stage_code, ps.name AS stage_name, l.enquiry_type, pt.title AS property_title,
                    l.priority_score, l.assigned_user_id, au.full_name AS assigned_name, l.next_action_at,
-                   l.next_action_note, l.created_at
+                   l.next_action_note, l.created_at, l.version, l.outcome, l.updated_at
             FROM leads l
             JOIN customers c ON c.id = l.customer_id
             LEFT JOIN users au ON au.id = l.assigned_user_id
@@ -59,7 +60,8 @@ class StaffLeadController {
                 rs.getString("enquiry_type"), rs.getString("property_title"), rs.getInt("priority_score"),
                 rs.getObject("assigned_user_id", UUID.class), rs.getString("assigned_name"),
                 rs.getObject("next_action_at", OffsetDateTime.class), rs.getString("next_action_note"),
-                rs.getObject("created_at", OffsetDateTime.class));
+                rs.getObject("created_at", OffsetDateTime.class), rs.getLong("version"), rs.getString("outcome"),
+                rs.getObject("updated_at", OffsetDateTime.class));
     }
 
     @GetMapping("/leads")

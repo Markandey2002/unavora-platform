@@ -4,7 +4,6 @@ import com.unavora.identity.AccessService;
 import com.unavora.platform.ApiException;
 import com.unavora.platform.Cursor;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -43,7 +42,13 @@ class StaffCustomerController {
     private final JdbcClient jdbc;
     private final AccessService access;
 
-    StaffCustomerController(JdbcClient jdbc, AccessService access) { this.jdbc = jdbc; this.access = access; }
+    private final FollowUpWriter followUps;
+
+    StaffCustomerController(JdbcClient jdbc, AccessService access, FollowUpWriter followUps) {
+        this.jdbc = jdbc;
+        this.access = access;
+        this.followUps = followUps;
+    }
 
     record CustomerRow(UUID id, String reference, String name, String email, String phone, String whatsapp,
                        boolean whatsappVerified, OffsetDateTime registeredAt, OffsetDateTime lastLoginAt, String signupSource,
@@ -71,7 +76,7 @@ class StaffCustomerController {
                                 @NotBlank @Size(max = 500) String summary, UUID leadId) {}
 
     record FollowUpRequest(@NotBlank @Size(max = 200) String title, @Size(max = 2000) String description,
-                           @NotNull @Future OffsetDateTime dueAt, UUID leadId) {}
+                           @NotNull OffsetDateTime dueAt, UUID leadId, @Pattern(regexp = "low|normal|high") String priority) {}
 
     private static final String SELECT = """
             SELECT c.id, c.public_ref, c.full_name, c.email_normalized, c.phone_e164, c.whatsapp_e164,
@@ -205,20 +210,9 @@ class StaffCustomerController {
         UUID me = me();
         visibleCustomer(id, me, access.has(me, "customer.read_all"));
         UUID leadId = checkLead(id, body.leadId(), me);
-        UUID taskId = jdbc.sql("""
-                INSERT INTO crm_tasks (customer_id, lead_id, assigned_to, created_by, title, description, due_at)
-                VALUES (:c, :l, :me, :me, :t, :d, :due) RETURNING id""")
-                .param("c", id).param("l", leadId).param("me", me).param("t", body.title().trim())
-                .param("d", EnquiryService.blankToNull(body.description())).param("due", body.dueAt()).query(UUID.class).single();
-        jdbc.sql("""
-                INSERT INTO lead_activities (customer_id, lead_id, activity_type, summary, actor_user_id, ref_type, ref_id)
-                VALUES (:c, :l, 'task_created', :s, :me, 'task', :ref)""")
-                .param("c", id).param("l", leadId).param("s", truncate("Follow-up: " + body.title().trim()))
-                .param("me", me).param("ref", taskId.toString()).update();
-        if (leadId != null) {
-            jdbc.sql("UPDATE leads SET next_action_at = :due, next_action_note = :t WHERE id = :l")
-                    .param("due", body.dueAt()).param("t", truncate(body.title().trim())).param("l", leadId).update();
-        }
+        FollowUpWriter.validateDue(body.dueAt());
+        UUID taskId = followUps.insert(id, leadId, null, me, me, body.title(), body.description(), body.dueAt(),
+                body.priority() == null ? "normal" : body.priority());
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("id", taskId));
     }
 

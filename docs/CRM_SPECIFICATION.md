@@ -32,7 +32,7 @@ Director (everything, MFA mandatory in staging/prod) · Employee (own leads/cust
 | Win rate | `won / (won + lost)` in period |
 | Lost-reason mix | `count by lost_reason_code` |
 | Source quality | `won / total` per `lead_sources` |
-Only the first four are implemented (`/api/v1/director/overview`, tested PASS); the rest are specified, NOT IMPLEMENTED.
+Implemented in `/api/v1/director/overview` (tested PASS): the first four plus win rate, visit conversion (leads with a completed visit / leads that reached Qualified or later), won/lost/invalid counts, leads by employee and stage, visit counts (upcoming, completed/cancelled/no-show in 30 days) and per-employee workload (open leads, open/overdue follow-ups, follow-ups done on time in 30 days, upcoming visits). Lost-reason mix and source quality: specified, NOT IMPLEMENTED.
 
 ## 7. Customer accounts (approved 2026-11-07)
 - **Signup/login:** "Continue with Google" only. On first login we store the Google account id (`sub`), name, Gmail, registration date and last login (`customer_identities`) and create the customer profile automatically. Later logins update `last_login_at` and never create a second profile.
@@ -55,5 +55,8 @@ Only the first four are implemented (`/api/v1/director/overview`, tested PASS); 
 | Signed-in enquiry/callback/site-visit → separate leads | PASS |
 | CRM customer list/detail, contact actions, communication log, follow-ups (API) | PASS |
 | Staff/director web UI (Leads, Customers, My follow-ups, Director overview; en/hi) | PASS (Playwright 16 staff tests; CI green on `5624342`) |
-| Stage change API, notes, visits scheduling, deals, segments, campaigns, merges | NOT IMPLEMENTED (schema only) |
+| Stage changes with validation, reasons, history; assignment/reassignment with history (Slice 4) | PASS locally (LeadWorkflowIT, Playwright), uncommitted |
+| Site visits: schedule, reschedule, cancel, complete, no-show (Slice 4) | PASS locally, uncommitted |
+| Follow-ups with priority, visit link, duplicate guard; employee dashboard; director pipeline/visits/conversion/workload (Slice 4) | PASS locally, uncommitted |
+| Deals, payments, notes UI, segments, campaigns, merges, exports | NOT IMPLEMENTED (schema only) |
 | Notification/outbox relay, WhatsApp/email notifications | NOT IMPLEMENTED |

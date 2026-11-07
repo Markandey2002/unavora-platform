@@ -14,6 +14,9 @@ PostgreSQL 17, one database, Flyway migrations in `services/api/src/main/resourc
 | V7 | reporting views |
 | V8 | reference data (roles, permissions, pipeline, lost reasons, sources, types, amenities, unverified company profile) |
 | V9 | customer accounts: `customers` + whatsapp_e164/whatsapp_verified_at/registered_at/signup_source; `customer_identities` (UNIQUE provider+subject), `customer_sessions` (token hash), `phone_verifications` (HMAC code hash, attempts, expiry); lead source `website_account`; activity types `account_registered`, `phone_verified` |
+| V10 | staff web sign-in: `roles.requires_mfa` (director), `staff_auth_requests` (state hash, nonce, PKCE verifier; single use), `user_sessions.auth_methods` |
+| V11 | lead workflow: Invalid requires a reason, `lead_stage_history.reason_code` + trigger (Lost/Invalid need a reason), `lead_assignments.previous_assigned_to`, `site_visits.employee_notes` + checks (no completion before the scheduled time, assignee when scheduled), `crm_tasks.priority` + `site_visit_id` + unique index against duplicate open follow-ups, permission `visit.manage_all` (director) |
+| V12 | `user_sessions.id_token_hint` for OIDC RP-initiated logout (server-side only, erased on logout) |
 | seed-local V1000 | synthetic users, localities, `[SAMPLE]` properties, 2 leads. Loaded only by `local` and `test` profiles |
 
 ## Entity relationships

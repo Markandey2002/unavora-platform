@@ -1,11 +1,12 @@
 openapi: 3.1.0
 info:
   title: UNAVORA API
-  version: 0.2.0
+  version: 0.4.0
   description: >-
     Implemented endpoints only. Behaviour is covered by MockMvc integration tests (services/api/src/test) and the local
     validation scripts; there are no automated OpenAPI contract tests yet. /internal/v1/** is called only by the
-    Next.js BFF with the service credential and is never routed publicly.
+    Next.js BFF with the service credential and is never routed publicly. Every /api/v1/staff/** and
+    /api/v1/director/** path is also served under /internal/v1/** for the BFF (staff session header).
 servers:
   - url: http://localhost:8080
 paths:
@@ -187,8 +188,161 @@ paths:
       security: [{ service: [] }]
       parameters: [{ name: phone, in: query, required: true, schema: { type: string } }]
       responses: { "200": { description: OK }, "404": { description: None } }
+  /internal/v1/staff-auth/start:
+    post:
+      summary: BFF only. Start staff sign-in (Authorization Code + PKCE); state, nonce and verifier stay in the API
+      security: [{ service: [] }]
+      responses: { "200": { description: "authorizationUrl, state" }, "429": { $ref: "#/components/responses/Problem" } }
+  /internal/v1/staff-auth/complete:
+    post:
+      summary: BFF only. Complete sign-in; invitation-only; roles with requires_mfa need amr=otp; returns opaque session token
+      security: [{ service: [] }]
+      responses: { "200": { description: "sessionToken, expiresAt, idleTimeoutSeconds, language" }, "400": { description: login_expired }, "403": { description: "not_invited | mfa_required" } }
+  /internal/v1/staff-auth/logout:
+    post:
+      summary: BFF only. Revoke the staff session; returns the IdP end-session URL (RP-initiated logout) or null
+      security: [{ service: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/StaffSession" }
+        - { name: lang, in: query, schema: { type: string, enum: [en, hi] } }
+      responses: { "200": { description: endSessionUrl } }
+  /internal/v1/staff/me:
+    get:
+      summary: Signed-in staff member, roles, permissions, MFA state
+      security: [{ service: [] }]
+      parameters: [{ $ref: "#/components/parameters/StaffSession" }]
+      responses: { "200": { description: OK }, "401": { description: "Session missing, expired, revoked or lacking required MFA" } }
+  /api/v1/staff/dashboard:
+    get:
+      summary: "Caller's own dashboard: leads by stage, today's and upcoming visits, follow-up counts, recent leads (also /internal/v1/staff/dashboard)"
+      security: [{ bearer: [] }]
+      responses: { "200": { description: OK } }
+  /api/v1/staff/pipeline:
+    get:
+      summary: Configured stages, allowed transitions and lost reasons
+      security: [{ bearer: [] }]
+      responses: { "200": { description: OK } }
+  /api/v1/staff/assignees:
+    get:
+      summary: Active employees/directors for assignment (lead.assign, visit.manage_all or task.manage_all)
+      security: [{ bearer: [] }]
+      responses: { "200": { description: OK }, "403": { description: Forbidden } }
+  /api/v1/staff/leads/{id}/stage:
+    post:
+      summary: Change stage (lead.update; own leads unless lead.read_all). Lost needs reasonCode (+note when required); Invalid needs note; reopening needs lead.reopen; Won needs a completed deal
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [toStage]
+              properties:
+                toStage: { type: string }
+                expectedVersion: { type: integer, description: optimistic locking; 409 stale_lead if different }
+                reasonCode: { type: string }
+                note: { type: string, maxLength: 1000 }
+      responses: { "200": { description: "leadId, fromStage, toStage, version" }, "404": { description: Not visible }, "409": { $ref: "#/components/responses/Problem" }, "422": { $ref: "#/components/responses/Problem" } }
+  /api/v1/staff/leads/{id}/assign:
+    post:
+      summary: Assign or reassign (lead.assign). Reassignment needs a reason; open follow-ups and upcoming visits move with the lead
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [assigneeId]
+              properties: { assigneeId: { type: string, format: uuid }, expectedVersion: { type: integer }, reason: { type: string, maxLength: 1000 } }
+      responses: { "200": { description: "previousUserId, newUserId, method, movedFollowUps, movedVisits" }, "403": { description: Forbidden }, "409": { $ref: "#/components/responses/Problem" }, "422": { $ref: "#/components/responses/Problem" } }
+  /api/v1/staff/leads/{id}/history:
+    get:
+      summary: Stage history (from, to, by, reason, time) and assignment history (previous, new, by, method, reason, time)
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses: { "200": { description: OK }, "404": { description: Not visible } }
+  /api/v1/staff/leads/{id}/activities:
+    get:
+      summary: Lead timeline
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses: { "200": { description: OK }, "404": { description: Not visible } }
+  /api/v1/staff/site-visits:
+    get:
+      summary: Visits visible to the caller (visit.read_all = all; else assigned to me or on my leads)
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: scope, in: query, schema: { type: string, enum: [today, upcoming, past, all], default: upcoming } }
+        - { name: leadId, in: query, schema: { type: string, format: uuid } }
+      responses: { "200": { description: OK } }
+    post:
+      summary: Schedule a visit (visit.manage_own for self, visit.manage_all for anyone). Time from 24 h ago to 180 days ahead; no two visits within 60 min per employee; lead open; property available
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [leadId, scheduledAt]
+              properties:
+                leadId: { type: string, format: uuid }
+                propertyId: { type: string, format: uuid }
+                scheduledAt: { type: string, format: date-time }
+                assignedUserId: { type: string, format: uuid }
+                locationNote: { type: string, maxLength: 300 }
+      responses: { "201": { description: "id, reference, status, scheduledAt, version, leadStage" }, "409": { $ref: "#/components/responses/Problem" }, "422": { $ref: "#/components/responses/Problem" } }
+  /api/v1/staff/site-visits/{id}:
+    get:
+      summary: Visit detail incl. customer feedback, internal notes (staff only) and status history
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses: { "200": { description: OK }, "404": { description: Not visible } }
+  /api/v1/staff/site-visits/{id}/{action}:
+    post:
+      summary: "reschedule (scheduledAt + reason) | cancel (reason) | complete (feedback/interestAfter/employeeNotes/nextAction; only after the scheduled time) | no-show (only after the scheduled time). Never automatic."
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: action, in: path, required: true, schema: { type: string, enum: [reschedule, cancel, complete, no-show] } }
+      responses: { "200": { description: OK }, "404": { description: Not visible }, "409": { $ref: "#/components/responses/Problem" }, "422": { $ref: "#/components/responses/Problem" } }
+  /api/v1/staff/follow-ups:
+    get:
+      summary: My open follow-ups (priority, lead, visit), overdue first
+      security: [{ bearer: [] }]
+      responses: { "200": { description: OK } }
+    post:
+      summary: Create a follow-up on a lead and/or visit (due now..+1 year, priority low|normal|high, assignee others only with task.manage_all); duplicates refused
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, dueAt]
+              properties:
+                leadId: { type: string, format: uuid }
+                siteVisitId: { type: string, format: uuid }
+                title: { type: string, maxLength: 200 }
+                description: { type: string, maxLength: 2000 }
+                dueAt: { type: string, format: date-time }
+                priority: { type: string, enum: [low, normal, high] }
+                assignedTo: { type: string, format: uuid }
+      responses: { "201": { description: Created }, "409": { description: duplicate_follow_up }, "422": { $ref: "#/components/responses/Problem" } }
+  /api/v1/staff/follow-ups/{id}/complete:
+    post:
+      summary: Mark done (assignee or task.manage_all); already done -> 409
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses: { "200": { description: OK }, "404": { description: Not yours }, "409": { description: already_completed } }
 components:
   parameters:
+    StaffSession: { name: X-Staff-Session, in: header, required: true, schema: { type: string } }
     CustomerSession: { name: X-Customer-Session, in: header, required: true, schema: { type: string } }
   securitySchemes:
     bearer: { type: http, scheme: bearer, bearerFormat: JWT }

@@ -9,8 +9,11 @@ export async function POST(req: NextRequest) {
   if (!sameOrigin(req)) return new NextResponse("Forbidden", { status: 403 });
   const lang = (await req.formData()).get("lang") === "hi" ? "hi" : "en";
   const session = staffSessionFrom(req.cookies);
-  if (session) await staffAuth.logout(session);
-  const res = NextResponse.redirect(new URL(`/${lang}/staff/login?signedOut=1`, req.url), 303);
+  const r = session ? await staffAuth.logout(session, lang) : null;
+  // Also end the identity provider's single sign-on session (OIDC RP-initiated logout), so the next person on this
+  // device signs in as themselves. The provider returns to /_bff/staff/signed-out.
+  const target = r?.ok && r.data.endSessionUrl ? r.data.endSessionUrl : new URL(`/${lang}/staff/login?signedOut=1`, req.url);
+  const res = NextResponse.redirect(target, 303);
   for (const name of [STAFF_COOKIE_SECURE, STAFF_COOKIE_DEV]) {
     res.cookies.set(name, "", { httpOnly: true, path: "/", maxAge: 0, secure: name === STAFF_COOKIE_SECURE });
   }

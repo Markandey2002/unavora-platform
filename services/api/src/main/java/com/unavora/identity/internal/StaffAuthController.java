@@ -33,12 +33,15 @@ class StaffAuthController {
     private final AccessService access;
     private final RateLimiter limiter;
     private final JdbcClient jdbc;
+    private final int signInPerIp;
 
-    StaffAuthController(StaffSessionService sessions, AccessService access, RateLimiter limiter, JdbcClient jdbc) {
+    StaffAuthController(StaffSessionService sessions, AccessService access, RateLimiter limiter, JdbcClient jdbc,
+                        @org.springframework.beans.factory.annotation.Value("${unavora.rate-limit.staff-signin-per-ip-per-10min:60}") int signInPerIp) {
         this.sessions = sessions;
         this.access = access;
         this.limiter = limiter;
         this.jdbc = jdbc;
+        this.signInPerIp = signInPerIp;   // per source IP; an office behind one NAT shares it, hence not too low
     }
 
     record StartRequest(@Size(max = 2) String language) {}
@@ -50,20 +53,23 @@ class StaffAuthController {
 
     @PostMapping("/internal/v1/staff-auth/start")
     StaffSessionService.StartResult start(@Valid @RequestBody(required = false) StartRequest body, HttpServletRequest http) {
-        limit(http, "staff-start", 30);
+        limit(http, "staff-start", signInPerIp);
         return sessions.start(body == null ? "en" : body.language());
     }
 
     @PostMapping("/internal/v1/staff-auth/complete")
     StaffSessionService.LoginResult complete(@Valid @RequestBody CompleteRequest body, HttpServletRequest http) {
-        String ipHash = limit(http, "staff-complete", 30);
+        String ipHash = limit(http, "staff-complete", signInPerIp);
         return sessions.complete(body.code(), body.state(), ipHash);
     }
 
+    record LogoutResult(String endSessionUrl) {}
+
+    /** Revokes the CRM session; endSessionUrl (if any) lets the browser also end the provider single sign-on session. */
     @PostMapping("/internal/v1/staff-auth/logout")
-    ResponseEntity<Void> logout(@RequestHeader(value = StaffSessions.HEADER, required = false) String session) {
-        sessions.logout(session);
-        return ResponseEntity.noContent().build();
+    LogoutResult logout(@RequestHeader(value = StaffSessions.HEADER, required = false) String session,
+                        @org.springframework.web.bind.annotation.RequestParam(defaultValue = "en") String lang) {
+        return new LogoutResult(sessions.logout(session, lang));
     }
 
     /** Requires a valid staff session (enforced by the internal filter chain); MFA policy enforced by AccessService. */

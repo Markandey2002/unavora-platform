@@ -52,3 +52,78 @@ export async function completeFollowUp(form: FormData) {
   const r = await staffApi.completeFollowUp(s, safeId(str(form, "followUpId")));
   done(l, `/${l}/staff/follow-ups`, r.ok ? r : { ...r, code: r.code }, "saved=done");
 }
+
+// ---------------------------------------------------------------- Slice 4: stages, assignment, visits, follow-ups
+
+/** Only same-app staff paths may be used as a return target (no open redirect). */
+function back(l: string, f: FormData): string {
+  const p = str(f, "returnTo");
+  return p.startsWith(`/${l}/staff/`) && !p.includes("//") && !p.includes("..") ? p.split("?")[0] : `/${l}/staff/leads`;
+}
+
+/** <input type="datetime-local"> carries no zone; the business runs on India time. */
+function ist(local: string): string {
+  return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(local) ? `${local}:00+05:30` : local;
+}
+
+const num = (f: FormData, k: string) => {
+  const n = Number(str(f, k));
+  return Number.isFinite(n) && str(f, k) !== "" ? n : undefined;
+};
+
+export async function changeStage(form: FormData) {
+  const l = lang(form);
+  const s = await session(l);
+  const r = await staffApi.changeStage(s, safeId(str(form, "leadId")), {
+    toStage: str(form, "toStage"), expectedVersion: num(form, "version"),
+    reasonCode: str(form, "reasonCode") || undefined, note: str(form, "note") || undefined,
+  });
+  done(l, back(l, form), r, "saved=stage");
+}
+
+export async function assignLead(form: FormData) {
+  const l = lang(form);
+  const s = await session(l);
+  const r = await staffApi.assign(s, safeId(str(form, "leadId")), {
+    assigneeId: safeId(str(form, "assigneeId")), expectedVersion: num(form, "version"), reason: str(form, "reason") || undefined,
+  });
+  done(l, back(l, form), r, "saved=assigned");
+}
+
+export async function scheduleVisit(form: FormData) {
+  const l = lang(form);
+  const s = await session(l);
+  const r = await staffApi.scheduleVisit(s, {
+    leadId: safeId(str(form, "leadId")), scheduledAt: ist(str(form, "scheduledAt")),
+    propertyId: safeId(str(form, "propertyId")) || undefined, assignedUserId: safeId(str(form, "assigneeId")) || undefined,
+    locationNote: str(form, "locationNote") || undefined,
+  });
+  done(l, back(l, form), r, "saved=visit");
+}
+
+export async function visitAction(form: FormData) {
+  const l = lang(form);
+  const s = await session(l);
+  const action = str(form, "action");
+  if (action !== "reschedule" && action !== "cancel" && action !== "complete" && action !== "no-show") redirect(back(l, form));
+  const body: Record<string, unknown> = { expectedVersion: num(form, "version") };
+  if (action === "reschedule") { body.scheduledAt = ist(str(form, "scheduledAt")); body.reason = str(form, "reason"); }
+  if (action === "cancel" || action === "no-show") body.reason = str(form, "reason") || undefined;
+  if (action === "complete") {
+    body.feedback = str(form, "feedback") || undefined; body.interestAfter = str(form, "interestAfter") || undefined;
+    body.employeeNotes = str(form, "employeeNotes") || undefined; body.nextAction = str(form, "nextAction") || undefined;
+  }
+  const r = await staffApi.visitAction(s, safeId(str(form, "visitId")), action, body);
+  done(l, back(l, form), r, `saved=${action}`);
+}
+
+export async function createFollowUp(form: FormData) {
+  const l = lang(form);
+  const s = await session(l);
+  const r = await staffApi.createFollowUp(s, {
+    leadId: safeId(str(form, "leadId")) || undefined, siteVisitId: safeId(str(form, "siteVisitId")) || undefined,
+    title: str(form, "title"), description: str(form, "description") || undefined, dueAt: ist(str(form, "dueAt")),
+    priority: str(form, "priority") || "normal", assignedTo: safeId(str(form, "assignedTo")) || undefined,
+  });
+  done(l, back(l, form), r, "saved=followup");
+}

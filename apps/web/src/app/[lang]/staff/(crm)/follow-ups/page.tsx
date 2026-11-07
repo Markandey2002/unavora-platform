@@ -43,10 +43,11 @@ export default async function FollowUpsPage({
             {list.map((f) => (
               <li key={f.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate/20 bg-white p-4">
                 <div>
-                  <p className="font-semibold">{f.title}</p>
+                  <p className="font-semibold">{f.title} <span className={`ml-1 rounded px-2 py-0.5 text-xs ${f.priority === "high" ? "bg-red-100 text-red-800" : "bg-navy/10"}`}>{t.priorities[f.priority] ?? f.priority}</span></p>
                   <p className="text-sm text-slate">
                     {fmtDateTime(f.dueAt, lang)} · <Link className="underline" href={`/${lang}/staff/customers/${f.customerId}`}>{f.customerName}</Link>
                     {f.leadId && <> · <Link className="underline" href={`/${lang}/staff/leads/${f.leadId}`}>{f.leadReference}</Link></>}
+                    {f.siteVisitId && <> · <Link className="underline" href={`/${lang}/staff/visits/${f.siteVisitId}`}>{f.siteVisitReference}</Link></>}
                   </p>
                   {f.description && <p className="mt-1 text-sm">{f.description}</p>}
                 </div>

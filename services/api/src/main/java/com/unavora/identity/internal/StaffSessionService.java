@@ -101,14 +101,14 @@ class StaffSessionService implements StaffSessions {
         String methods = String.join(" ", identity.authMethods());
         OffsetDateTime expiresAt = jdbc.sql("""
                 INSERT INTO user_sessions (session_token_hash, user_id, idle_expires_at, absolute_expires_at, mfa_verified_at,
-                                           auth_methods, ip_hash)
+                                           auth_methods, ip_hash, id_token_hint)
                 VALUES (:h, :u, now() + CAST(:idle AS interval), now() + CAST(:abs AS interval),
-                        CASE WHEN :mfa THEN now() END, :m, :ip)
+                        CASE WHEN :mfa THEN now() END, :m, :ip, :idt)
                 RETURNING absolute_expires_at""")
                 .param("h", Hashing.sha256(token)).param("u", userId)
                 .param("idle", idle.toSeconds() + " seconds").param("abs", abs.toSeconds() + " seconds")
                 .param("mfa", mfa).param("m", methods.length() > 100 ? methods.substring(0, 100) : methods)
-                .param("ip", ipHash == null ? null : ipHash.getBytes(StandardCharsets.UTF_8))
+                .param("ip", ipHash == null ? null : ipHash.getBytes(StandardCharsets.UTF_8)).param("idt", identity.idToken())
                 .query(OffsetDateTime.class).single();
         jdbc.sql("UPDATE users SET last_login_at = now(), mfa_enrolled = (mfa_enrolled OR :mfa) WHERE id = :u")
                 .param("mfa", mfa).param("u", userId).update();
@@ -137,13 +137,22 @@ class StaffSessionService implements StaffSessions {
         return Optional.of(new StaffPrincipal(row.get().userId(), row.get().id(), row.get().mfa()));
     }
 
+    /**
+     * Revokes the CRM session and returns the provider end-session URL (null if none), so the browser also leaves the
+     * identity provider single sign-on session. The stored id_token_hint is erased at the same time.
+     */
     @Transactional
-    void logout(String token) {
-        if (token == null || token.isBlank()) return;
-        jdbc.sql("""
-                UPDATE user_sessions SET revoked_at = now() WHERE session_token_hash = :h AND revoked_at IS NULL
-                RETURNING user_id""").param("h", Hashing.sha256(token)).query(UUID.class).optional()
-                .ifPresent(u -> audit(u, "staff.logout", "success", null, null));
+    String logout(String token, String language) {
+        if (token == null || token.isBlank()) return null;
+        record Revoked(UUID userId, String hint) {}
+        var revoked = jdbc.sql("""
+                UPDATE user_sessions s SET revoked_at = now(), id_token_hint = NULL
+                FROM (SELECT id, id_token_hint FROM user_sessions WHERE session_token_hash = :h AND revoked_at IS NULL FOR UPDATE) old
+                WHERE s.id = old.id RETURNING s.user_id, old.id_token_hint""")
+                .param("h", Hashing.sha256(token)).query((rs, n) -> new Revoked(rs.getObject(1, UUID.class), rs.getString(2))).optional();
+        if (revoked.isEmpty()) return null;
+        audit(revoked.get().userId(), "staff.logout", "success", null, null);
+        return idp.endSessionUrl(revoked.get().hint(), "hi".equals(language) ? "hi" : "en");
     }
 
     boolean requiresMfa(UUID userId) {

@@ -64,9 +64,11 @@ test("employee signs in, sees only own leads, cannot open the director dashboard
   await signIn(page, "employee1");
   await expect(page).toHaveURL(/\/en\/staff\/leads/);
   await expect(page.getByTestId("staff-name")).toContainText("Employee One");
-  await expect(page.getByTestId("lead-list")).toContainText("LEAD-LOCAL-1");
   await expect(page.getByTestId("lead-list")).not.toContainText("LEAD-LOCAL-2");
   await expect(page.getByRole("link", { name: "Director overview" })).toHaveCount(0);
+  // Own lead opens (by id: the list is paged and other tests keep adding leads for employee 1)
+  await page.goto("/en/staff/leads/40000000-0000-0000-0000-000000000001");
+  await expect(page.getByTestId("lead-reference")).toHaveText("LEAD-LOCAL-1");
 
   await page.goto(`/en/staff/leads/${FOREIGN_LEAD}`);
   await expect(page.getByTestId("not-found")).toBeVisible();
@@ -121,7 +123,7 @@ test("director must pass TOTP; wrong code is rejected; with the code the company
 
   await expect(page).toHaveURL(/\/en\/staff\/leads/);
   await expect(page.getByTestId("mfa-badge")).toBeVisible();
-  await expect(page.getByTestId("lead-list")).toContainText("LEAD-LOCAL-2");   // company-wide
+  await expect(page.getByTestId("lead-list")).toBeVisible();   // company-wide list (paged; LEAD-LOCAL-2 checked by id below)
   await page.getByRole("link", { name: "Director overview" }).click();
   await expect(page.getByTestId("kpi-published")).toHaveText("4");
   await expect(page.getByTestId("stage-funnel")).toBeVisible();
@@ -133,7 +135,7 @@ test("director must pass TOTP; wrong code is rejected; with the code the company
 test("complete CRM workflow: lead -> customer -> call/WhatsApp -> log contact -> follow-up -> done", async ({ page }, info) => {
   const tag = `${info.project.name}-${Date.now()}`;
   await signIn(page, "employee1");
-  await page.getByTestId("lead-list").getByText("LEAD-LOCAL-1").click();
+  await page.goto("/en/staff/leads/40000000-0000-0000-0000-000000000001");
   await expect(page.getByTestId("lead-reference")).toHaveText("LEAD-LOCAL-1");
   await expect(page.getByTestId("call-action")).toHaveAttribute("href", /^tel:\+91\d{10}$/);
   await expect(page.getByTestId("whatsapp-action")).toHaveAttribute("href", /^https:\/\/wa\.me\/91\d{10}$/);

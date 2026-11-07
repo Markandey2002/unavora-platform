@@ -20,7 +20,9 @@ export default async function CrmLayout({ children, params }: { children: ReactN
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate/20 bg-white p-3">
         <nav aria-label={t.crm} className="-mx-1 flex flex-wrap gap-1">
+          <Link href={`/${lang}/staff/dashboard`} className={link}>{t.nav.dashboard}</Link>
           <Link href={`/${lang}/staff/leads`} className={link}>{t.nav.leads}</Link>
+          <Link href={`/${lang}/staff/visits`} className={link}>{t.nav.visits}</Link>
           <Link href={`/${lang}/staff/customers`} className={link}>{t.nav.customers}</Link>
           <Link href={`/${lang}/staff/follow-ups`} className={link}>{t.nav.followUps}</Link>
           {can(me, "report.director") && <Link href={`/${lang}/staff/overview`} className={link}>{t.nav.overview}</Link>}

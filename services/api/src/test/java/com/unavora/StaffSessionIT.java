@@ -195,8 +195,17 @@ class StaffSessionIT extends IntegrationTestBase {
     void logoutRevokesTheSession() throws Exception {
         String token = login(EMPLOYEE_1, "pwd");
         mvc.perform(staff(get("/internal/v1/staff/me"), token)).andExpect(status().isOk());
-        mvc.perform(internal(post("/internal/v1/staff-auth/logout")).header("X-Staff-Session", token)).andExpect(status().isNoContent());
+        assertEquals(1, jdbc.sql("SELECT count(*) FROM user_sessions WHERE session_token_hash = sha256(convert_to(:t,'UTF8')) AND id_token_hint IS NOT NULL")
+                .param("t", token).query(Integer.class).single());
+        // logout revokes the session AND returns the provider end-session URL (RP-initiated logout, language in state)
+        mvc.perform(internal(post("/internal/v1/staff-auth/logout?lang=hi")).header("X-Staff-Session", token))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.endSessionUrl").value("http://mock-idp.test/logout?state=hi"));
         mvc.perform(staff(get("/internal/v1/staff/me"), token)).andExpect(status().isUnauthorized());
+        assertEquals(0, jdbc.sql("SELECT count(*) FROM user_sessions WHERE session_token_hash = sha256(convert_to(:t,'UTF8')) AND id_token_hint IS NOT NULL")
+                .param("t", token).query(Integer.class).single(), "the id_token_hint is erased on logout");
+        // a second logout with the same token does nothing
+        mvc.perform(internal(post("/internal/v1/staff-auth/logout")).header("X-Staff-Session", token))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.endSessionUrl").doesNotExist());
     }
 
     @Test
