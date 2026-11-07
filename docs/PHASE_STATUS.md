@@ -11,7 +11,7 @@ Updated 2026-11-07. Evidence: TEST_RESULTS.md.
 | 3b Vertical slice 2 (customer Google sign-in + WhatsApp OTP) | **Done locally with MOCK adapters**: tests PASS. Real Google and real WhatsApp: **not configured, not tested** |
 | 4 CRM breadth | Partly: customer list/detail, communication log, follow-ups (API). Stage changes, notes UI, visits, deals: schema only |
 | 5 Staging / 6 Production | Not started. Production needs separate human approval |
-| CI | `.github/workflows/ci.yml` written and linted (actionlint 0 findings); **not yet run on GitHub** (no repository). Original `infra/ci/github-actions-ci.yml` kept until then |
+| CI | **Green on GitHub** (private repo `Markandey2002/unavora-platform`): run #2 on `2814c52`, 4/4 jobs passed (secret scan, API, web, end-to-end). Superseded `infra/ci/github-actions-ci.yml` removed |
 
 ## Done (verified locally)
 Public property search/detail (en/hi), enquiry → customer + consent + lead + assignment + timeline + audit + outbox (idempotent, rate-limited per visitor), staff lead list/detail with record isolation, director overview, "Continue with Google" (mock) with one profile per Google account, customer sessions (HttpOnly cookie via BFF, hashed in DB), WhatsApp OTP (mock) with expiry/attempt/resend limits, signed-in enquiry/callback/site-visit requests as separate leads, separate enquiry vs marketing consent, CRM customer list including registered-only customers, contact actions (tel:, wa.me), communication history, follow-ups, internal BFF API protected by service credential, security baseline tests.

@@ -167,7 +167,7 @@ Same steps, using the bash forms: `cp .env.example .env`, `docker compose up -d 
 - **"Detected resolved migration not applied to database: 9"** cannot happen in the `local` profile (out-of-order is allowed there; DECISION_LOG D-015).
 
 ## Layout
-`apps/web` Next.js (pages, `/_bff` auth routes, server actions) · `apps/mobile` (reserved) · `services/api` Spring Boot + Flyway (modules `properties`, `crm`, `customers`, `identity`, `reporting`, `platform`) · `contracts/openapi` · `infra/local` (Keycloak realm, validation scripts) · `.github/workflows/ci.yml` · `docs`. `infra/ci/github-actions-ci.yml` is the original workflow, kept until `.github/workflows/ci.yml` has run green on GitHub.
+`apps/web` Next.js (pages, `/_bff` auth routes, server actions) · `apps/mobile` (reserved) · `services/api` Spring Boot + Flyway (modules `properties`, `crm`, `customers`, `identity`, `reporting`, `platform`) · `contracts/openapi` · `infra/local` (Keycloak realm, validation scripts) · `.github/workflows/ci.yml` · `docs`. CI runs on every push and pull request to `main` in the private GitHub repository `Markandey2002/unavora-platform` (secret scan, API, web, end-to-end).
 
 ## Rules
 Synthetic data only outside production. Secrets never go in git; the local values are throw-away. No AWS deployment, real Google OAuth or real WhatsApp provider until explicitly approved. Mock modes must never be enabled in staging or production; those profiles have no defaults, so startup fails if a mode is not set explicitly.
