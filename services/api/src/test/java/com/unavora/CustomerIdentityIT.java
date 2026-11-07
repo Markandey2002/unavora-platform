@@ -40,6 +40,14 @@ class CustomerIdentityIT extends IntegrationTestBase {
     @BeforeEach
     void reset() { limiter.reset(); }
 
+    /**
+     * A unique synthetic Indian mobile number: prefix (e.g. "+9198") + exactly 8 random digits. Must not depend on
+     * System.nanoTime(), whose length differs by platform (CI run #1 on Linux: only 11 digits -> substring crash).
+     */
+    static String uniquePhone(String prefix) {
+        return prefix + String.format("%08d", java.util.concurrent.ThreadLocalRandom.current().nextInt(100_000_000));
+    }
+
     static String b64(String s) { return Base64.getUrlEncoder().withoutPadding().encodeToString(s.getBytes(StandardCharsets.UTF_8)); }
 
     static String mockCredential(String sub, String email, String name) {
@@ -147,7 +155,7 @@ class CustomerIdentityIT extends IntegrationTestBase {
     @Test
     void whatsAppOtpVerifiesNumberWithAttemptLimit() throws Exception {
         String s = login("mock-" + UUID.randomUUID(), "otp." + UUID.randomUUID().toString().substring(0, 8) + "@example.test");
-        String phone = "+9198" + String.valueOf(System.nanoTime()).substring(5, 13);
+        String phone = uniquePhone("+9198");
         mvc.perform(internal(post("/internal/v1/customer/whatsapp/otp")).header("X-Customer-Session", s)
                 .content("{\"phone\":\"" + phone + "\"}")).andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.expiresInSeconds").value(600));
@@ -172,7 +180,7 @@ class CustomerIdentityIT extends IntegrationTestBase {
     @Test
     void tooManyWrongCodesLockTheCode() throws Exception {
         String s = login("mock-" + UUID.randomUUID(), "lock." + UUID.randomUUID().toString().substring(0, 8) + "@example.test");
-        String phone = "+9197" + String.valueOf(System.nanoTime()).substring(5, 13);
+        String phone = uniquePhone("+9197");
         mvc.perform(internal(post("/internal/v1/customer/whatsapp/otp")).header("X-Customer-Session", s)
                 .content("{\"phone\":\"" + phone + "\"}")).andExpect(status().isAccepted());
         String code = latestMockCode(phone);
@@ -193,7 +201,7 @@ class CustomerIdentityIT extends IntegrationTestBase {
                         .content("{\"type\":\"callback\",\"enquiryConsent\":true,\"marketingConsent\":false}"))
                 .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("whatsapp_not_verified"));
 
-        String phone = "+9196" + String.valueOf(System.nanoTime()).substring(5, 13);
+        String phone = uniquePhone("+9196");
         String s = signUpVerified("mock-" + UUID.randomUUID(), "req." + UUID.randomUUID().toString().substring(0, 8) + "@example.test", phone);
         String key = UUID.randomUUID().toString();
         String callback = mvc.perform(internal(post("/internal/v1/customer/requests")).header("X-Customer-Session", s)
@@ -244,7 +252,7 @@ class CustomerIdentityIT extends IntegrationTestBase {
 
     @Test
     void assignedEmployeeGetsContactActionsAndMaintainsHistoryAndFollowUps() throws Exception {
-        String phone = "+9195" + String.valueOf(System.nanoTime()).substring(5, 13);
+        String phone = uniquePhone("+9195");
         String s = signUpVerified("mock-" + UUID.randomUUID(), "sales." + UUID.randomUUID().toString().substring(0, 8) + "@example.test", phone);
         mvc.perform(internal(post("/internal/v1/customer/requests")).header("X-Customer-Session", s)
                 .content("{\"type\":\"enquiry\",\"propertyId\":\"" + PUBLISHED_PROPERTY + "\",\"enquiryConsent\":true,\"marketingConsent\":true}"))

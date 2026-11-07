@@ -8,7 +8,7 @@ const TOKEN = process.env.INTERNAL_SERVICE_TOKEN ?? "local-dev-internal-token-no
 test("customer signs up with Google (mock), verifies WhatsApp and requests a site visit", async ({ page, request }, info) => {
   const tag = `${info.project.name}-${Date.now()}`;
   const email = `e2e.${tag}@example.test`;
-  const phone = `98${String(Date.now()).slice(-8)}`;
+  const phone = `98${String(Date.now()).slice(-7)}${info.project.name === "mobile" ? 1 : 2}`; // unique per parallel project
 
   await page.goto("/en/account");
   await page.getByRole("link", { name: "Continue with Google" }).click();

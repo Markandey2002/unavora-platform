@@ -135,3 +135,15 @@ See README "Tests". The logs from this session are in the session scratchpad and
 | Real API keys / OAuth secrets / private keys / live payment keys / remote JDBC URLs | PASS (none) | pattern search over the exact staged export; the only match was this document's own list of searched prefixes |
 | Personal data | PASS | emails only `@example.test` plus the company address; phone numbers are the company number and dummy test fixtures |
 | gitleaks v8.21.2 on final staged export | PASS | "no leaks found", exit 0 |
+
+## 9. First GitHub CI run and fix (2026-11-07)
+Baseline `b8d4fdd` pushed to the private repository `Markandey2002/unavora-platform` (owner-approved). CI run #1:
+
+| Job | Result |
+|---|---|
+| Secret scan (gitleaks, full history) | PASS (9 s) |
+| Web (typecheck, unit, build, prod audit) on Linux | PASS (32 s), the first Linux run of the web job |
+| API (`mvn verify`) on Linux | **FAIL**: 35/39 ITs passed; 4 errors in `CustomerIdentityIT`: `StringIndexOutOfBoundsException: Range [5, 13) out of bounds for length 11` |
+| End-to-end | skipped (needs API) |
+
+**Cause:** a test-only bug. Unique test phone numbers were built with `String.valueOf(System.nanoTime()).substring(5, 13)`. `nanoTime()` is an arbitrary timer whose length differs by OS and uptime (long on the Windows PC, 11 digits on the fresh Linux runner). **Fix:** `uniquePhone(prefix)` = prefix + 8 random digits (`%08d`), so the length is independent of platform. Also made the Playwright test phone unique per parallel project (mobile/desktop) to avoid a cross-project OTP mix-up. GitHub Actions bumped off the deprecated Node 20 majors (checkout v7, setup-java v6, setup-node v7, upload-artifact v7, download-artifact v8; tags checked with `git ls-remote`). Re-check: `mvn verify` 43/43 PASS (Windows), `tsc` PASS, `actionlint` 0 findings. Linux confirmation = CI run #2.
