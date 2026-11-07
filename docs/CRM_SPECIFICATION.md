@@ -54,6 +54,6 @@ Only the first four are implemented (`/api/v1/director/overview`, tested PASS); 
 | WhatsApp OTP verification (mock) | PASS (real provider BLOCKED) |
 | Signed-in enquiry/callback/site-visit → separate leads | PASS |
 | CRM customer list/detail, contact actions, communication log, follow-ups (API) | PASS |
-| Staff/director web UI (Leads, Customers, My follow-ups, Director overview; en/hi) | PASS locally (Playwright 16 staff tests), uncommitted |
+| Staff/director web UI (Leads, Customers, My follow-ups, Director overview; en/hi) | PASS (Playwright 16 staff tests; CI green on `5624342`) |
 | Stage change API, notes, visits scheduling, deals, segments, campaigns, merges | NOT IMPLEMENTED (schema only) |
 | Notification/outbox relay, WhatsApp/email notifications | NOT IMPLEMENTED |

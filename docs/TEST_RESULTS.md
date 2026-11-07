@@ -150,7 +150,7 @@ Baseline `b8d4fdd` pushed to the private repository `Markandey2002/unavora-platf
 
 **CI run #2 on `2814c52`: all 4 checks passed on GitHub (Linux)** (screenshot from the owner): Secret scan 6 s, Web 35 s, API (unit + Testcontainers, 43 tests) 1 min, End-to-end (Docker Postgres + Keycloak, API, web, Playwright mobile+desktop, both business-flow scripts) 2 min. This is the first successful Linux run of every job. Afterwards the superseded `infra/ci/github-actions-ci.yml` was removed.
 
-## 10. Slice 3: Staff and Director CRM dashboards (2026-11-07, uncommitted)
+## 10. Slice 3: Staff and Director CRM dashboards (2026-11-07, commit `5624342`, CI green)
 Precondition: CI run #3 on `7a2ea1a` green (owner screenshot) before coding started.
 
 | Suite | Status | Evidence |
@@ -163,6 +163,6 @@ Precondition: CI run #3 on `7a2ea1a` green (owner screenshot) before coding star
 | Business-flow script | PASS 19/19 | director token now obtained with TOTP |
 | Customer-signup script | PASS 25/25 | |
 | `actionlint` on updated `ci.yml` | PASS | step names only; e2e already waits for Keycloak before Playwright |
-| GitHub CI on the Slice 3 commit | NOT RUN | not committed/pushed yet (awaiting owner approval) |
+| GitHub CI on the Slice 3 commit | **PASS** | commit `5624342` pushed with owner approval; CI run #4 all 4 jobs green (owner confirmation): secret scan, API 60 tests, web build, end-to-end incl. Playwright 26 with real Keycloak TOTP and both flow scripts |
 
 Fixed during Slice 3: text-block concatenation `:meRETURNING` in follow-up completion (500 for employees); test asserted a mock-only URL parameter (now checks S256 against the stored verifier); **API failed to start in the `local` profile because the staff issuer defaulted only to an unset `OIDC_ISSUER_URI`** (now defaults to the resource-server issuer); Playwright locator ambiguous with Next's hidden route announcer; Playwright pinned to 1 worker so mobile/desktop director logins never reuse a TOTP window; repeated shell cwd race when starting two background servers in parallel (started sequentially).
