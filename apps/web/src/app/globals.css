@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+/* Brand tokens: supplied palette image (overrides the PDF palette). */
+@theme {
+  --color-navy: #101d35;
+  --color-gold: #e3c58a;
+  --color-ivory: #f7f5f0;
+  --color-slate: #64748b;
+  --font-sans: ui-sans-serif, system-ui, "Noto Sans Devanagari", "Segoe UI", sans-serif;
+}
+
+html { background: var(--color-ivory); color: var(--color-navy); }
+body { font-family: var(--font-sans); -webkit-text-size-adjust: 100%; }
+:focus-visible { outline: 3px solid var(--color-gold); outline-offset: 2px; }

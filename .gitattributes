@@ -1,0 +1,8 @@
+# Normalise line endings: LF in the repository and in Linux CI; Windows tools handle LF fine.
+* text=auto eol=lf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+*.png binary
+*.jpg binary
+*.jar binary

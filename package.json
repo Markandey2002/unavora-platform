@@ -1,0 +1,8 @@
+{
+  "name": "unavora-workspace-guard",
+  "private": true,
+  "description": "Isolation guard. Stops npm from walking up to C:\\Users\\Dell (an unrelated project) when run from a UNAVORA folder without its own package.json. Run npm only inside apps/web.",
+  "scripts": {
+    "preinstall": "node -e \"console.error('UNAVORA: run npm inside apps/web, not here.'); process.exit(1)\""
+  }
+}

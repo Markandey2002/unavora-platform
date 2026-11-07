@@ -1,0 +1,137 @@
+# TEST_RESULTS.md
+
+Last updated: **2026-11-07**, local Windows 11 PC (16 GB RAM). Vocabulary: **PASS / FAIL / BLOCKED / NOT RUN**. A test is PASS only if it was executed here and its output was seen. Every row below that says PASS was executed on 2026-11-07.
+
+## 1. Environment (verified)
+| Item | Value |
+|---|---|
+| Working dir | `C:\Users\Dell\UnnaVora` (Git Bash + PowerShell available, commands executed) |
+| Java | Temurin 21.0.12.1 |
+| Maven | 3.10.0. Not on PATH; used the cached wrapper distribution at `%USERPROFILE%\.m2\wrapper\dists\apache-maven-3.10.0\…\bin\mvn` |
+| Node / npm | 24.12.0 / 11.6.2 (see §6: an ancestor `node_modules/.bin/node` v18 shadows it inside `npm run`) |
+| Docker | Engine 29.1.2, Compose v2.40.3. Daemon running. Docker Desktop crashed once under memory pressure and was restarted |
+| Resolved versions | Spring Boot 4.0.0, Tomcat 11.0.14, Flyway (Boot-managed), Testcontainers 2.0.2, PostgreSQL 17.11, Next 16.4.5, React 19.3.1, Tailwind 4.3.5, Vitest 3.2.7, Playwright 1.65.0, TypeScript 5.9.3, Keycloak 26.0 |
+
+## 2. Results
+### Slice 1: property search → enquiry → CRM
+| Suite | Status | Command / evidence |
+|---|---|---|
+| Docker Compose: postgres, keycloak, mailpit | PASS | `docker compose up -d`; `pg_isready` → accepting connections; Keycloak OIDC discovery reachable |
+| Docker Compose: minio, minio-init | BLOCKED | `pull access denied for minio/mc` (Docker Hub); quay.io returns 401. Moved to opt-in profile `storage` (D-016). Nothing uses storage yet |
+| Flyway V1–V8 + seed V1000 on a **clean** local DB (new volume) | PASS | `java -jar target/unavora-api-0.1.0-SNAPSHOT.jar --spring.profiles.active=local` → "Successfully applied 9 migrations … now at version v1000" |
+| Flyway V9 on the existing local DB | PASS | after the D-015 fix: "Migrating schema "public" to version "9 - customer identity" [out of order]" |
+| `mvn package` (compile) | PASS | after fixes F1, F2 |
+| ArchitectureTest (4 rules) | PASS | `mvn verify`: Tests run: 4, Failures: 0 |
+| DatabaseConstraintsIT (6) | PASS | Testcontainers postgres:17 |
+| PublicPropertyIT (8) | PASS | |
+| EnquiryAndLeadFlowIT (12) | PASS | incl. idempotency, consent row, shared phone, rate limit, per-visitor rate limit (new), 401/403/404 isolation |
+| SecurityIT (5, new) | PASS | forged/alg=none JWT → 401, security headers, CORS allow-list, injection strings, no internals in errors, non-UUID Idempotency-Key → 400 |
+| `npm install` (generated the first `package-lock.json`) | PASS | no lockfile existed before; `npm ci` is now possible |
+| `npm audit --omit=dev` | PASS | 0 vulnerabilities in production deps |
+| `npm audit` (dev deps) | FAIL (accepted, tracked) | 1 critical, 1 moderate, 1 more in vitest 3 → tinypool / @vitest/mocker. Fix requires the vitest 4 major; not done blindly (D-019) |
+| `tsc --noEmit` | PASS | `node node_modules/typescript/bin/tsc --noEmit` |
+| Vitest (`api.test.ts`, 3) | PASS | after fix F5 |
+| `next build` | PASS | `NEXT_BUILD_CPUS=2 node node_modules/next/dist/bin/next build` (all 11 routes) |
+| Playwright `enquiry.spec.ts` (mobile + desktop, 4) | PASS | against the running API (local) + `next start` |
+| Business-flow script (19 checks) | PASS | `python infra/local/scripts/validate_business_flow.py` → 19/19 (real Keycloak tokens for employee1/employee2/director) |
+| Keycloak realm import + token → API user mapping | PASS | after fix F7 (ids aligned with seed) |
+| Actuator health on 8081 (and not on 8080) | PASS | `curl :8081/actuator/health` → UP; `:8080/actuator/health` → 404 |
+
+### Slice 2: customer Google sign-in (mock) + WhatsApp OTP (mock)
+| Suite | Status | Command / evidence |
+|---|---|---|
+| CustomerIdentityIT (8) | PASS | service credential required (bearer refused on /internal), first login creates profile, re-login no duplicate + last_login updated, non-`mock-` subjects refused, OTP verify, wrong-code counting, 5-attempt lock, resend cooldown, requests need verified WhatsApp, separate leads + consents, CRM visibility, contact actions, communication + follow-up |
+| ArchitectureTest rule `customers.internal` private | PASS | |
+| Playwright `customer-signup.spec.ts` (mobile + desktop, 6) | PASS | full journey in a browser: Continue with Google → mock chooser → profile → WhatsApp OTP → site visit request → sign out → sign in → same CUS- ref; HttpOnly + SameSite=Lax cookie not readable by JS; cross-origin logout → 403 |
+| Signup validation script (25 checks) | PASS | `python infra/local/scripts/validate_customer_signup.py` → 25/25 |
+| Real Google sign-in (`mode=google`) | NOT RUN / BLOCKED | needs an approved Google OAuth client (project, consent screen, redirect URI). Code path exists (`GoogleIdTokenVerifier`, BFF code exchange with PKCE + nonce) but **has never run** |
+| Real WhatsApp OTP | BLOCKED | no provider adapter exists; needs the WhatsApp Business account, a BSP and an approved authentication template (PENDING #6, #19) |
+
+### Totals of executed automated tests (final run)
+`mvn verify`: **43 tests, 0 failures** (4 ArchUnit + 39 integration). Vitest: **3/3**. Playwright: **10/10**. Scripts: **19/19** and **25/25**.
+
+### Not run
+| Item | Status | Reason |
+|---|---|---|
+| `docker compose --profile apps up --build` (API/web images) | NOT RUN | host memory exhausted during the session; the web Dockerfile was fixed statically (missing `public/`, `npm ci`) but the images were never built |
+| `.github/workflows/ci.yml` on GitHub | NOT RUN | folder is not a git repository / no remote. Workflow validated with `actionlint 1.7.7` (0 findings); its steps were run locally as listed above |
+| Visitor IP forwarding web → API, end to end | NOT RUN (partially verified) | API side verified by `rateLimitIsPerVisitorWhenForwardedByTheWebServer`; locally browser and Next share 127.0.0.1, so the browser→Next→API hop cannot be distinguished |
+| Load, ZAP, accessibility (axe), Lighthouse, SEO | NOT RUN | staging-phase work |
+| OpenAPI contract tests | NOT RUN | spec linted (`redocly lint` → valid) but not checked against responses automatically |
+
+## 3. Failures found and fixed
+| # | Failure (actual output) | Fix |
+|---|---|---|
+| F1 | `PublicPropertyController.java:[101,17] local variables referenced from a lambda expression must be final` | collect the query result into a new list instead of mutating a captured variable |
+| F2 | `package org.springframework.boot.test.autoconfigure.web.servlet does not exist` | Boot 4 moved it: `org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc`; Testcontainers 2: `org.testcontainers.postgresql.PostgreSQLContainer` |
+| F3 | `FATAL: invalid value for parameter "TimeZone": "Asia/Calcutta"` (Windows JVM default zone rejected by PG 17) | server runs in UTC (`main()`), `-Duser.timezone=UTC` for surefire/failsafe/spring-boot:run |
+| F4 | `*IT` tests silently skipped by `mvn verify` | bound `maven-failsafe-plugin` |
+| F5 | 16 IT failures, 500 `Could not open JDBC Connection` | `@Container` in abstract base stopped after first class while Spring's cached context kept its URL → singleton container |
+| F6 | `expected: <1> but was: <12>` audit count | test counted global rows; scoped to the created lead |
+| F7 | Keycloak realm user ids `11111111-…` ≠ seed `external_subject` `00000000-…0101` → staff tokens map to no user | realm ids aligned with seed |
+| F8 | malformed JSON / non-UUID `Idempotency-Key` → **500** | `ProblemHandler` extends `ResponseEntityExceptionHandler` (framework 4xx keep their status, generic body) |
+| F9 | site-wide enquiry throttling: all website enquiries reach the API from the Next server IP (10/hour shared) | server action forwards visitor IP (`X-Forwarded-For`); API test proves separate buckets |
+| F10 | `vitest` `ERR_REQUIRE_ESM` loading `vitest.config.ts` | renamed to `vitest.config.mts` (the package is not ESM) |
+| F11 | `next build`: "You are using Node.js 18.20.8" | environment: ancestor `C:\Users\Dell\node_modules\.bin\node`; tools invoked with the system Node (README) |
+| F12 | Docker Desktop crash / `insufficient memory for the Java Runtime` / Node `heap out of memory` / `paging file is too small` | Keycloak heap 512 MB, API `-Xmx448m`, test forks `-Xmx768m`, `NEXT_BUILD_CPUS=2`; Keycloak stopped during the web build |
+| F13 | `Detected resolved migration not applied to database: 9` (seed is V1000) | `spring.flyway.out-of-order: true` in `local` only (D-015) |
+| F14 | `director sees all leads` failed once more leads existed (page-1 assumption) | assert by id + per-assignee presence |
+| F15 | `dictionaries.ts` duplicate key `verified` (TS1117) | renamed to `numberVerified` |
+| F16 | `redocly lint`: 10 errors (`nullable` invalid in 3.1, public ops without `security: []`) | `type: [x, "null"]`, `security: []` |
+
+## 4. Side effect to report (investigated in the follow-up)
+While running two shell commands in parallel early in the session, `npm install` executed from `UnnaVora\services\api`, which has no `package.json`. npm walked up to **`C:\Users\Dell`** (an unrelated `first_node_project`). All later commands were run sequentially with absolute paths.
+
+Investigation (read-only, from npm's own debug log `2026-11-07T06_45_23_556Z-debug-0.log`):
+- **Removed:** `node_modules/node/node_modules/node-win-x64@18.20.8` and `node_modules/node/node_modules/node-bin-setup@1.1.4`. These are install-time helper copies placed by the `node@18` package's preinstall script, and are not part of the project's lockfile.
+- **Rewritten:** `C:\Users\Dell\package-lock.json` (12:15:32 IST). No earlier copy exists, so byte-identity cannot be proven. Its dependency entries match the unchanged `package.json`.
+- **Unchanged:** `package.json` (Dec 2025). `node_modules/node/bin/node.exe` still runs v18.20.8.
+- **Read-only check:** `npm ls --prefix C:\Users\Dell --depth=0` → exit 0 (dotenv 16.4.5, jest 29.7.0, mongoose 8.5.0, node 18.20.8, pg 8.16.3). No missing or invalid packages.
+- **Backup** (made before anything else, outside both projects): `C:\Users\Dell\Backups\first_node_project-2026-11-07\`, with package.json, package-lock.json, the nested lock, the npm debug log, SHA256SUMS.txt and README.txt.
+- **Verdict:** no functional restoration is needed. For an exact restore of the two helper copies, the owner can run `npm rebuild node` in `C:\Users\Dell`. **Not done**, because it modifies that project.
+- **Re-check before any rebuild (read-only):** backup checksums OK; current `package.json`, `package-lock.json` and the nested lock are byte-identical to the backup. Both helpers are confirmed missing. Manifest and lockfile are consistent (`npm ls --all` exit 0). `npm rebuild node` would re-download `node-win-x64` and the newest `node-bin-setup` 1.x and rewrite files inside `node_modules\node`, and the next `npm install` there would prune them again.
+- **Owner decision (2026-11-07):** leave `C:\Users\Dell` unchanged, do not run `npm rebuild node`, keep the verified backup. UNAVORA work uses the documented Node 24 commands (`node node_modules\…`) and never runs npm in `C:\Users\Dell` (DECISION_LOG D-023).
+
+## 7. Follow-up session (2026-11-07, isolation and Windows commands)
+| Check | Status | Evidence |
+|---|---|---|
+| Container status | done | at check time: `unavora-postgres`, `unavora-keycloak`, `unavora-mailpit` up (restarted outside this session); `dharmstay-postgres-local/-dev`, `redis`, `office-link-*` exited except `office-link-frontend` (restart policy unless-stopped). None of the other projects' containers were started, stopped, modified or deleted |
+| Minimum services | done | stopped `unavora-keycloak` (559 MB) and `unavora-mailpit`; only `unavora-postgres` (43 MB) left running |
+| Isolation guard: `npm install` from `services\api` | PASS | fails with "UNAVORA: run npm inside apps/web"; SHA-256 of `C:\Users\Dell\package-lock.json` unchanged before and after. The stray empty root lockfile it left was deleted, and the path is now git-ignored |
+| `turbopack.root` pinned to `apps/web` | PASS | `next build` passes; the "ignored package-lock.json in C:\Users\Dell" warning no longer appears |
+| PowerShell 5.1.22621 command forms | PASS (spot-checked) | `& $mvn -v`, `docker compose ps`, `node node_modules\typescript\bin\tsc --noEmit` (exit 0), `node node_modules\vitest\vitest.mjs run` (3/3). Server-start and `Invoke-RestMethod` lines were not re-run in this follow-up (same commands as the Git Bash runs above) |
+| Earlier results (§2) | preserved (see also §8) | no application or test code changed in the follow-up except `next.config.ts` (`turbopack.root`), re-verified by `next build` |
+
+## 5. How to reproduce
+See README "Tests". The logs from this session are in the session scratchpad and are not committed.
+
+## 6. Known environment issues on this PC
+- Node shadowing by `C:\Users\Dell\node_modules\.bin\node` (v18) inside `npm run`.
+- About 8 GB is held by two VMs (`vmmem`, `vmmemWSL`). The commit limit is reached with the full stack, a JVM and a Next build running together.
+
+## 8. GitHub preparation (2026-11-07)
+| Check | Status | Evidence |
+|---|---|---|
+| Git repository | done | `git init -b main` (local only). **Nothing committed or pushed** — awaiting owner approval |
+| Generated files removed | done | 4 JVM out-of-memory dumps `hs_err_pid*.log` (one was inside `src/main/resources` and would have been packaged into the jar), `infra/local/scripts/__pycache__/` |
+| `.gitignore` hardened | done | adds crash/log files, `__pycache__`, `next-env.d.ts`, keys/certs (`*.pem`, `*.key`, `*.p12`, `*.jks`…), Google/OAuth credential JSON (`client_secret*.json`, `credentials*.json`, `service-account*.json`), DB dumps/backups, `/exports/`, `/backups/`. `.env` / `.env.*` were already excluded. `.gitattributes` normalises to LF |
+| Staged content | 113 files, ~575 KB | excluded on disk: `node_modules`, `.next`, `target`, `test-results`, `tsconfig.tsbuildinfo`, `next-env.d.ts` |
+| Secret scan, staged content | PASS | `gitleaks v8.21.2 dir` on an exact export of the index: first run 1 finding (the intentional unsigned `alg=none` test JWT in `SecurityIT.java`, now marked `// gitleaks:allow`), re-run **no leaks found** |
+| Credential patterns (AWS, private keys, Google `GOCSPX-`/`AIza`, Razorpay, Stripe, GitHub, Slack, Meta) | PASS | none found |
+| Remaining credential-like values | reviewed, accepted | throw-away local values only: `*_local_dev_only` (compose/.env.example), Keycloak dev realm passwords + `web-bff-local-dev-secret`, `local-dev-…-not-a-secret`, `test-…` in the test profile. Staging/production profiles have no defaults |
+| Personal data | reviewed | customers are synthetic (`@example.test`, `+9199999000xx`). Company public contact data from the mock-up (director name, `+918318377108`, `info@anantinfrarealty.com`, stale address in docs) is in V8/docs, `verified=false` — owner to confirm it may live in a private repo |
+| CI workflow fixes | done | e2e job now sets `CUSTOMER_AUTH_MODE=mock` + local `INTERNAL_SERVICE_TOKEN` (without them `customer-signup.spec.ts` would fail on GitHub); dropped unused `mailpit`; new `secrets` job (gitleaks over full history). `actionlint 1.7.7`: 0 findings |
+| Lockfile has Linux native packages | PASS | `@next/swc-linux-x64-gnu`, `lightningcss-linux-x64-gnu`, `@tailwindcss/oxide-linux-x64-gnu`, rollup, esbuild, sharp all present |
+| Linux rehearsal of the web job (`node:22` container) | BLOCKED | Docker Desktop restarted under memory pressure during `npm ci` (`error waiting for container: unexpected EOF`, exit 125). Not retried; the first GitHub run will be the first Linux run |
+| Test sources after `SecurityIT` comment edit | PASS | `mvn test-compile` |
+
+### 8.1 Final pre-commit checks (owner request, 2026-11-07)
+| Check | Status | Evidence |
+|---|---|---|
+| Obsolete personal email removed | done | removed from `V8__reference_data.sql` (comment), `CONTENT_AND_ASSET_REGISTER.md`, `PENDING_BUSINESS_CONFIRMATIONS.md`; 0 occurrences in the staged files. Intended company email `info@anantinfrarealty.com`, `verified=false` until business confirmation |
+| Local DB after the V8 comment change | PASS | Flyway CLI 11.14.1 (same version as the app): `repair` updated the V8 checksum only (2137036268 → 1336322144, no SQL re-run); `validate` → "Successfully validated 10 migrations". Fresh databases (tests, CI) are unaffected |
+| Director name / company phone | NOT VERIFIED | from the owner-supplied *Website Blueprint (Updated)* PDF, "Get in Touch" page; stored `verified=false`; no independent approval on record (PENDING #2/#3/#6). Awaiting owner confirmation |
+| Local credentials | reviewed | all throw-away and local-only: `unavora_local_dev_only`, `admin_local_dev_only`, `minio_local_dev_only`, Keycloak dev users `*-local-1`, `web-bff-local-dev-secret`, `local-dev-…-not-a-secret`, `test-…` (test profile). Staging/production YAML: every secret is `${VAR}` with **no default**. Keycloak realm file is mounted only by the local compose file; staging/production use Cognito |
+| Real API keys / OAuth secrets / private keys / live payment keys / remote JDBC URLs | PASS (none) | pattern search over the exact staged export; the only match was this document's own list of searched prefixes |
+| Personal data | PASS | emails only `@example.test` plus the company address; phone numbers are the company number and dummy test fixtures |
+| gitleaks v8.21.2 on final staged export | PASS | "no leaks found", exit 0 |

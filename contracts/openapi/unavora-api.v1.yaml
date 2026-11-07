@@ -1,0 +1,251 @@
+openapi: 3.1.0
+info:
+  title: UNAVORA API
+  version: 0.2.0
+  description: >-
+    Implemented endpoints only. Behaviour is covered by MockMvc integration tests (services/api/src/test) and the local
+    validation scripts; there are no automated OpenAPI contract tests yet. /internal/v1/** is called only by the
+    Next.js BFF with the service credential and is never routed publicly.
+servers:
+  - url: http://localhost:8080
+paths:
+  /api/v1/public/properties:
+    get:
+      security: []
+      summary: Search published, available properties
+      parameters:
+        - { name: lang, in: query, schema: { type: string, enum: [en, hi], default: en } }
+        - { name: city, in: query, schema: { type: string } }
+        - { name: type, in: query, schema: { type: string } }
+        - { name: minPrice, in: query, schema: { type: number } }
+        - { name: maxPrice, in: query, schema: { type: number } }
+        - { name: bedrooms, in: query, schema: { type: integer } }
+        - { name: q, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 20 } }
+        - { name: cursor, in: query, schema: { type: string } }
+      responses:
+        "200": { description: Page of properties, content: { application/json: { schema: { $ref: "#/components/schemas/PropertyPage" } } } }
+        "400": { $ref: "#/components/responses/Problem" }
+  /api/v1/public/properties/{slug}:
+    get:
+      security: []
+      summary: Property detail
+      parameters:
+        - { name: slug, in: path, required: true, schema: { type: string } }
+        - { name: lang, in: query, schema: { type: string, enum: [en, hi], default: en } }
+      responses:
+        "200": { description: Detail, content: { application/json: { schema: { $ref: "#/components/schemas/PropertyDetail" } } } }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/v1/public/enquiries:
+    post:
+      security: []
+      summary: Submit an enquiry (creates or reuses customer, creates lead)
+      parameters:
+        - { name: Idempotency-Key, in: header, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/EnquiryRequest" } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/EnquiryResponse" } } } }
+        "200": { description: Replay of an earlier idempotent request, content: { application/json: { schema: { $ref: "#/components/schemas/EnquiryResponse" } } } }
+        "422": { $ref: "#/components/responses/Problem" }
+        "429": { $ref: "#/components/responses/Problem" }
+  /api/v1/staff/leads:
+    get:
+      summary: Leads visible to the caller (own, or all with lead.read_all)
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: stage, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer } }
+        - { name: cursor, in: query, schema: { type: string } }
+      responses:
+        "200": { description: OK }
+        "401": { description: Unauthenticated }
+        "403": { description: No lead permission }
+  /api/v1/staff/leads/{id}:
+    get:
+      summary: Lead detail; 404 if not visible to the caller
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses: { "200": { description: OK }, "404": { $ref: "#/components/responses/Problem" } }
+  /api/v1/director/overview:
+    get:
+      summary: Company-wide summary (permission report.director)
+      security: [{ bearer: [] }]
+      responses: { "200": { description: OK }, "403": { description: Forbidden } }
+  /api/v1/staff/customers:
+    get:
+      summary: Customers visible to the caller (customer.read_all = all; customer.read_own = assigned or own-lead customers)
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: registered, in: query, schema: { type: boolean }, description: "true = website-registered only (incl. no enquiry yet)" }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 20 } }
+        - { name: cursor, in: query, schema: { type: string } }
+      responses: { "200": { description: OK }, "401": { description: No token }, "403": { description: Forbidden } }
+  /api/v1/staff/customers/{id}:
+    get:
+      summary: Customer detail with contact actions (tel, wa.me), latest consents, visible leads, communications, follow-ups
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses: { "200": { description: OK }, "404": { description: Not found or not visible to caller } }
+  /api/v1/staff/customers/{id}/communications:
+    post:
+      summary: Record a call or WhatsApp contact (employee_recorded, recorded_manual; never delivered) (lead.update)
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [channel, direction, summary]
+              properties:
+                channel: { type: string, enum: [phone, whatsapp] }
+                direction: { type: string, enum: [inbound, outbound] }
+                summary: { type: string, maxLength: 500 }
+                leadId: { type: string, format: uuid }
+      responses: { "201": { description: Created }, "404": { description: Not visible }, "422": { $ref: "#/components/responses/Problem" } }
+  /api/v1/staff/customers/{id}/follow-ups:
+    post:
+      summary: Create a follow-up task assigned to the caller (task.manage_own)
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, dueAt]
+              properties:
+                title: { type: string, maxLength: 200 }
+                description: { type: string, maxLength: 2000 }
+                dueAt: { type: string, format: date-time }
+                leadId: { type: string, format: uuid }
+      responses: { "201": { description: Created }, "404": { description: Not visible }, "422": { $ref: "#/components/responses/Problem" } }
+  /internal/v1/customer-auth/google:
+    post:
+      summary: BFF only. Verify Google credential (mode mock or google), create-or-load ONE customer, start session
+      security: [{ service: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [credential], properties: { credential: { type: string }, language: { type: string, enum: [en, hi] } } } } }
+      responses: { "200": { description: "sessionToken, expiresAt, newAccount, customer" }, "401": { $ref: "#/components/responses/Problem" }, "429": { $ref: "#/components/responses/Problem" } }
+  /internal/v1/customer-auth/logout:
+    post:
+      summary: BFF only. Revoke the customer session
+      security: [{ service: [] }]
+      parameters: [{ $ref: "#/components/parameters/CustomerSession" }]
+      responses: { "204": { description: Revoked } }
+  /internal/v1/customer/me:
+    get:
+      summary: BFF only. Signed-in customer profile
+      security: [{ service: [] }]
+      parameters: [{ $ref: "#/components/parameters/CustomerSession" }]
+      responses: { "200": { description: OK }, "401": { description: Session missing or expired } }
+  /internal/v1/customer/whatsapp/otp:
+    post:
+      summary: BFF only. Send a 6-digit WhatsApp code (10 min TTL, 30 s resend, 5 per hour). Adapter mock or disabled.
+      security: [{ service: [] }]
+      parameters: [{ $ref: "#/components/parameters/CustomerSession" }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [phone], properties: { phone: { type: string }, language: { type: string } } } } } }
+      responses: { "202": { description: Sent }, "200": { description: Already verified }, "429": { $ref: "#/components/responses/Problem" }, "503": { $ref: "#/components/responses/Problem" } }
+  /internal/v1/customer/whatsapp/verify:
+    post:
+      summary: BFF only. Verify the code (max 5 wrong attempts)
+      security: [{ service: [] }]
+      parameters: [{ $ref: "#/components/parameters/CustomerSession" }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [phone, code], properties: { phone: { type: string }, code: { type: string, pattern: "^[0-9]{6}$" } } } } } }
+      responses: { "200": { description: Verified profile }, "422": { $ref: "#/components/responses/Problem" }, "429": { $ref: "#/components/responses/Problem" } }
+  /internal/v1/customer/requests:
+    post:
+      summary: BFF only. Verified customer enquiry, callback or site visit; a NEW lead each time
+      security: [{ service: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/CustomerSession" }
+        - { name: Idempotency-Key, in: header, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, enquiryConsent, marketingConsent]
+              properties:
+                type: { type: string, enum: [enquiry, callback, site_visit] }
+                propertyId: { type: string, format: uuid }
+                message: { type: string, maxLength: 2000 }
+                preferredDate: { type: string, format: date }
+                preferredTime: { type: string, format: time }
+                enquiryConsent: { type: boolean, const: true }
+                marketingConsent: { type: boolean }
+      responses: { "201": { description: Created }, "200": { description: Idempotent replay }, "409": { description: WhatsApp not verified }, "422": { $ref: "#/components/responses/Problem" } }
+  /internal/v1/dev/mock-whatsapp/latest:
+    get:
+      summary: LOCAL/TEST ONLY (exists only when WhatsApp OTP mode is mock). Latest mock message for a number
+      security: [{ service: [] }]
+      parameters: [{ name: phone, in: query, required: true, schema: { type: string } }]
+      responses: { "200": { description: OK }, "404": { description: None } }
+components:
+  parameters:
+    CustomerSession: { name: X-Customer-Session, in: header, required: true, schema: { type: string } }
+  securitySchemes:
+    bearer: { type: http, scheme: bearer, bearerFormat: JWT }
+    service: { type: apiKey, in: header, name: X-Internal-Service-Token, description: BFF service credential (never sent by browsers) }
+  responses:
+    Problem:
+      description: RFC 7807 problem
+      content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } }
+  schemas:
+    Problem:
+      type: object
+      properties: { status: { type: integer }, detail: { type: string }, code: { type: string }, fields: { type: object, additionalProperties: { type: string } } }
+    EnquiryRequest:
+      type: object
+      required: [name, phone, consent]
+      properties:
+        name: { type: string, maxLength: 200 }
+        phone: { type: string, maxLength: 20, description: Indian mobile or E.164 }
+        email: { type: string, format: email }
+        message: { type: string, maxLength: 2000 }
+        propertyId: { type: string, format: uuid }
+        language: { type: string, enum: [en, hi] }
+        consent: { type: boolean, const: true }
+        marketingConsent: { type: boolean, description: "Optional and separate from consent. Omitted = not asked; false = declined." }
+    EnquiryResponse:
+      type: object
+      properties: { reference: { type: string }, status: { type: string } }
+    PropertySummary:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        number: { type: integer }
+        title: { type: string }
+        slug: { type: string }
+        city: { type: string }
+        locality: { type: string }
+        propertyType: { type: string }
+        price: { type: [number, "null"] }
+        priceOnRequest: { type: boolean }
+        priceNegotiable: { type: boolean }
+        bedrooms: { type: [integer, "null"] }
+        bathrooms: { type: [integer, "null"] }
+        builtUpArea: { type: [number, "null"] }
+        plotArea: { type: [number, "null"] }
+        areaUnit: { type: string }
+        availability: { type: string }
+        verified: { type: boolean }
+        language: { type: string }
+    PropertyPage:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/PropertySummary" } }
+        nextCursor: { type: [string, "null"] }
+    PropertyDetail:
+      type: object
+      properties:
+        summary: { $ref: "#/components/schemas/PropertySummary" }
+        description: { type: [string, "null"] }
+        amenities: { type: array, items: { type: string } }
+        availableLanguages: { type: array, items: { type: string } }

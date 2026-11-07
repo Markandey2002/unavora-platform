@@ -1,0 +1,143 @@
+# UNAVORA ANANT INFRA - local development infrastructure.
+# Works on Windows (Docker Desktop) and Linux. Local only: every credential below is a
+# throw-away development value. Never reuse them in staging or production.
+#
+#   docker compose up -d                 -> PostgreSQL, Mailpit, Keycloak
+#   docker compose --profile storage up -d -> also MinIO (S3 emulation, optional; see note on the service)
+#   docker compose --profile sqs up -d   -> also LocalStack (SQS emulation, optional)
+#   docker compose --profile apps up -d --build  -> also run API and web in containers
+#
+# By default run the API (mvn spring-boot:run) and web (pnpm dev) on the host.
+# All published ports are bound to 127.0.0.1 so nothing is reachable from the network.
+
+name: unavora-local
+
+services:
+  postgres:
+    image: postgres:17
+    container_name: unavora-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-unavora}
+      POSTGRES_USER: ${POSTGRES_USER:-unavora_local}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-unavora_local_dev_only}
+    ports:
+      - "127.0.0.1:15432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # OPTIONAL. As of 2026-11-07 the minio/minio and minio/mc images can no longer be pulled anonymously
+  # (Docker Hub: "repository does not exist"; quay.io: 401). No code uses object storage yet (uploads are
+  # not implemented), so this is opt-in until an S3-compatible replacement image is chosen. See DECISION_LOG D-016.
+  minio:
+    image: minio/minio:latest
+    profiles: ["storage"]
+    container_name: unavora-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio_local}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio_local_dev_only}
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # Creates the three buckets that mirror the production layout, all private.
+  minio-init:
+    image: minio/mc:latest
+    profiles: ["storage"]
+    container_name: unavora-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD} &&
+      mc mb --ignore-existing local/unavora-public-media &&
+      mc mb --ignore-existing local/unavora-private-documents &&
+      mc mb --ignore-existing local/unavora-raw-uploads &&
+      echo buckets ready"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio_local}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio_local_dev_only}
+    restart: "no"
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: unavora-mailpit
+    ports:
+      - "127.0.0.1:1025:1025"   # SMTP
+      - "127.0.0.1:8025:8025"   # Web UI
+    environment:
+      MP_MAX_MESSAGES: 500
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    container_name: unavora-keycloak
+    command: ["start-dev", "--import-realm", "--http-port=8180"]
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin_local}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin_local_dev_only}
+      KC_HTTP_PORT: "8180"
+      KC_HOSTNAME_STRICT: "false"
+      # Keep the local stack within a 16 GB laptop (Docker Desktop crashed under memory pressure without this).
+      JAVA_OPTS_KC_HEAP: "-Xms256m -Xmx512m"
+    ports:
+      - "127.0.0.1:8180:8180"
+    volumes:
+      - ./infra/local/keycloak/unavora-dev-realm.json:/opt/keycloak/data/import/unavora-dev-realm.json:ro
+
+  # Optional: SQS emulation for outbox-relay integration testing. Not needed to run the app.
+  localstack:
+    image: localstack/localstack:latest
+    container_name: unavora-localstack
+    profiles: ["sqs"]
+    environment:
+      SERVICES: sqs
+    ports:
+      - "127.0.0.1:4566:4566"
+
+  # Optional: run the applications in containers instead of on the host.
+  api:
+    profiles: ["apps"]
+    build:
+      context: ./services/api
+    container_name: unavora-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-unavora}
+      DB_USER: ${POSTGRES_USER:-unavora_local}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-unavora_local_dev_only}
+      OIDC_ISSUER_URI: http://localhost:8180/realms/unavora-dev
+    ports:
+      - "127.0.0.1:8080:8080"
+
+  web:
+    profiles: ["apps"]
+    build:
+      context: ./apps/web
+    container_name: unavora-web
+    depends_on:
+      - api
+    environment:
+      API_INTERNAL_URL: http://api:8080
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+    ports:
+      - "127.0.0.1:3000:3000"
+
+volumes:
+  postgres-data:
+  minio-data:

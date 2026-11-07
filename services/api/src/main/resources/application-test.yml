@@ -1,0 +1,12 @@
+# Automated tests. Datasource is injected by Testcontainers (@ServiceConnection); no external services.
+spring:
+  flyway:
+    locations: classpath:db/migration,classpath:db/seed-local
+  security.oauth2.resourceserver.jwt.issuer-uri:
+unavora:
+  cors-allowed-origins: http://localhost:3000
+  internal.service-token: test-internal-token
+  customer-auth.google.mode: mock
+  otp:
+    whatsapp.mode: mock
+    secret: test-otp-hmac-secret-0123456789

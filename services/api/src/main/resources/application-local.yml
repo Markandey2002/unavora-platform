@@ -1,0 +1,19 @@
+# LOCAL ONLY. Credentials here match compose.yaml and are not valid anywhere else.
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:15432/unavora}
+    username: ${DB_USER:unavora_local}
+    password: ${DB_PASSWORD:unavora_local_dev_only}
+  flyway:
+    locations: classpath:db/migration,classpath:db/seed-local     # synthetic seed data
+    # The seed is V1000, so later schema migrations (V9, V10...) sort before it on an existing local DB.
+    # Local only; staging/production have no seed and keep strict ordering. DECISION_LOG D-015.
+    out-of-order: true
+  security.oauth2.resourceserver.jwt.issuer-uri: ${OIDC_ISSUER_URI:http://localhost:8180/realms/unavora-dev}
+unavora:
+  cors-allowed-origins: http://localhost:3000
+  internal.service-token: ${INTERNAL_SERVICE_TOKEN:local-dev-internal-token-not-a-secret}
+  customer-auth.google.mode: ${CUSTOMER_GOOGLE_MODE:mock}     # MOCK: no Google account is contacted
+  otp:
+    whatsapp.mode: ${WHATSAPP_OTP_MODE:mock}                  # MOCK: no WhatsApp message is sent
+    secret: ${OTP_HMAC_SECRET:local-dev-otp-hmac-secret-not-a-secret}

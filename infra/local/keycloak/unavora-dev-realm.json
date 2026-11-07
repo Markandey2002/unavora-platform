@@ -1,0 +1,78 @@
+{
+  "realm": "unavora-dev",
+  "enabled": true,
+  "displayName": "UNAVORA (local development only)",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "sslRequired": "none",
+  "accessTokenLifespan": 900,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 43200,
+  "clients": [
+    {
+      "clientId": "web-bff",
+      "name": "Website BFF (confidential)",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "web-bff-local-dev-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["http://localhost:3000/_bff/auth/callback"],
+      "webOrigins": ["http://localhost:3000"],
+      "attributes": { "pkce.code.challenge.method": "S256" }
+    },
+    {
+      "clientId": "mobile",
+      "name": "React Native app (public, PKCE)",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": ["unavora://auth/callback", "exp://127.0.0.1:8081/--/auth/callback"],
+      "attributes": { "pkce.code.challenge.method": "S256" }
+    },
+    {
+      "clientId": "dev-cli",
+      "name": "LOCAL TOOLING ONLY - password grant for curl/Postman/tests. Must never exist outside this realm file.",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true
+    }
+  ],
+  "users": [
+    {
+      "id": "00000000-0000-0000-0000-000000000101",
+      "username": "director.local",
+      "email": "director.local@example.test",
+      "firstName": "Local",
+      "lastName": "Director",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "Director-local-1", "temporary": false }]
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000102",
+      "username": "employee1.local",
+      "email": "employee1.local@example.test",
+      "firstName": "Local",
+      "lastName": "Employee One",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "Employee1-local-1", "temporary": false }]
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000103",
+      "username": "employee2.local",
+      "email": "employee2.local@example.test",
+      "firstName": "Local",
+      "lastName": "Employee Two",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "Employee2-local-1", "temporary": false }]
+    }
+  ]
+}

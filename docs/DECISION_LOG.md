@@ -1,0 +1,27 @@
+# DECISION_LOG.md
+
+| ID | Date | Decision | Status |
+|---|---|---|---|
+| D-001 | 2026-11 | Modular monolith (Spring Boot) + Next.js; one PostgreSQL | Approved (ARCHITECTURE v2.0) |
+| D-002 | 2026-11 | Browser auth via Next.js BFF with HttpOnly session; mobile uses OAuth2 PKCE | Approved. **Customer** BFF session implemented (D-014); staff BFF login not yet |
+| D-003 | 2026-11 | Aurora Serverless v2, one NAT, CloudFront pay-as-you-go | Approved design; nothing created |
+| D-004 | 2026-11 | Transactional outbox → SQS | Approved; tables exist, **relay not implemented** |
+| D-005 | 2026-11 | Local-first order: local → test → validation → staging → human approval → production | Mandatory |
+| D-006 | 2026-11 | Authorisation in PostgreSQL (roles/permissions), checked per request via `AccessService` | Implemented, tested (PASS) |
+| D-007 | 2026-11 | Customer ≠ lead ≠ visit ≠ deal ≠ payment; shared customer table; phone not unique | Implemented, tested (PASS) |
+| D-008 | 2026-11 | Lead `won` only through deal workflow; deals inactive until business approves | Schema flag in place; workflow pending |
+| D-009 | 2026-11 | JdbcClient + SQL instead of JPA entities for the first slices | Kept |
+| D-010 | 2026-11 | Staff cannot see records outside their assignment; unauthorised access returns 404 | Implemented, **tested PASS** (leads and customers) |
+| D-011 | 2026-11 | Palette from supplied image overrides PDF | Applied |
+| D-012 | 2026-11 | Spring Boot 4.0.0 / Java 21 / Next 16 / React 19 / Tailwind 4 | **Verified 2026-11-07**: builds and tests pass (Boot 4.0.0, Next 16.4.5, React 19.3.1, Tailwind 4.3.5). No downgrades |
+| D-013 | 2026-11-07 | API process runs in UTC; JVM `-Duser.timezone=UTC` in Maven plugins | Implemented (Windows `Asia/Calcutta` id rejected by PG 17) |
+| D-014 | 2026-11-07 | Customer accounts: Google is the only customer sign-in method; one `customers` row per Google `sub` (UNIQUE provider+subject, advisory lock); no auto-merge with enquiry-only customers by email, a duplicate candidate is raised instead; opaque session token, SHA-256 at rest, HttpOnly cookie (`__Host-` on HTTPS), 7-day idle / 30-day absolute | Implemented with **mock** adapter; real Google pending (PENDING #19) |
+| D-015 | 2026-11-07 | Local seed stays V1000; `flyway.out-of-order=true` in the **local** profile only so new schema versions apply to existing dev DBs. Staging/prod: no seed, strict order | Implemented |
+| D-016 | 2026-11-07 | MinIO moved to opt-in Compose profile `storage`: `minio/minio` and `minio/mc` images can no longer be pulled anonymously | Temporary; choose an S3-compatible replacement image before uploads are built |
+| D-017 | 2026-11-07 | `/internal/v1/**` (BFF → API) is protected by a separate security filter chain with a shared service credential (`X-Internal-Service-Token`); bearer tokens are not accepted there and the credential does not work on `/api/v1/**`. It is served on 8080 behind the planned ALB "no route" rule, not yet on a separate port as in ARCHITECTURE §4.1 | Implemented; revisit port split before staging |
+| D-018 | 2026-11-07 | WhatsApp OTP: 6 digits, 10 min TTL, 5 wrong attempts, 30 s resend, 5/hour per customer, HMAC-SHA256(secret, id:code) at rest, never logged. Customer requests (enquiry, callback, site visit) require a verified WhatsApp number | Implemented with **mock** sender; real provider BLOCKED (PENDING #6) |
+| D-019 | 2026-11-07 | Dev-only `npm audit` findings in vitest 3 (tinypool, @vitest/mocker) are accepted for now; upgrade to vitest 4 as a deliberate change, not via `audit fix --force` | Open |
+| D-020 | 2026-11-07 | Enquiry consent (`service_contact`) and marketing consent (`marketing_whatsapp`) are separate, append-only rows; marketing is optional on the anonymous form and an explicit yes/no for signed-in requests | Implemented, tested |
+| D-022 | 2026-11-07 | Isolation from other projects on the dev PC: a guard root `package.json` (preinstall fails) stops npm climbing to `C:\Users\Dell`; `turbopack.root` pinned to `apps/web`; containers named `unavora-*`, Compose project `unavora-local`, 127.0.0.1-only ports, `restart: "no"`; run only `postgres` by default and add `keycloak` just for staff-token checks | Implemented, verified |
+| D-023 | 2026-11-07 | Home-folder project `C:\Users\Dell` (first_node_project) stays as is: no `npm rebuild node`, no installs, no edits. Verified backup kept at `C:\Users\Dell\Backups\first_node_project-2026-11-07\`. UNAVORA tools run with system Node 24 via `node node_modules\…` | Owner decision |
+| D-021 | 2026-11-07 | Employee/director authentication stays invitation-based (no self-registration in the staff realm: `registrationAllowed=false`); director MFA is mandatory in staging/production (Cognito TOTP). The local Keycloak realm has no MFA (documented local exception) | Policy confirmed; MFA enforcement not testable locally |

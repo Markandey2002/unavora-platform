@@ -1,0 +1,42 @@
+# Shared defaults. Every environment overrides via its own profile file; secrets come ONLY from environment
+# variables / secret stores, never from this repository.
+spring:
+  application.name: unavora-api
+  jpa.open-in-view: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  datasource:
+    hikari:
+      maximum-pool-size: ${DB_POOL_MAX:8}
+      connection-timeout: 3000
+  security.oauth2.resourceserver.jwt.issuer-uri: ${OIDC_ISSUER_URI:}
+server:
+  port: 8080
+  forward-headers-strategy: framework
+  error.include-message: never
+  error.include-stacktrace: never
+management:
+  server.port: 8081            # internal only; never routed by a load balancer
+  endpoints.web.exposure.include: health,info
+  endpoint.health.probes.enabled: true
+unavora:
+  cors-allowed-origins: ${CORS_ALLOWED_ORIGINS:}
+  rate-limit:
+    enquiry-per-ip-per-hour: 10
+  features:
+    whatsapp-automation: false   # stays false unless an approved test provider is configured
+    live-payments: false
+  # Service credential the Next.js BFF presents on /internal/v1/** (Secrets Manager outside local).
+  internal.service-token: ${INTERNAL_SERVICE_TOKEN:}
+  # Customer "Continue with Google": disabled | mock (local/test only) | google (needs an approved OAuth client id)
+  customer-auth.google:
+    mode: ${CUSTOMER_GOOGLE_MODE:disabled}
+    client-id: ${GOOGLE_OAUTH_CLIENT_ID:}
+  customer-session:
+    idle: P7D
+    absolute: P30D
+  # WhatsApp number verification: disabled | mock (local/test only). No real provider adapter exists yet.
+  otp:
+    whatsapp.mode: ${WHATSAPP_OTP_MODE:disabled}
+    secret: ${OTP_HMAC_SECRET:}
