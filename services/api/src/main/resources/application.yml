@@ -36,6 +36,17 @@ unavora:
   customer-session:
     idle: P7D
     absolute: P30D
+  # Staff/director website sign-in (BFF -> API -> OIDC provider, Authorization Code + PKCE). Invitation-only.
+  staff-auth:
+    mode: ${STAFF_AUTH_MODE:oidc}                       # oidc | mock (automated tests only)
+    issuer-uri: ${STAFF_OIDC_ISSUER_URI:${spring.security.oauth2.resourceserver.jwt.issuer-uri:}}   # same issuer as bearer tokens unless overridden
+    client-id: ${STAFF_OIDC_CLIENT_ID:web-bff}
+    client-secret: ${STAFF_OIDC_CLIENT_SECRET:}
+    redirect-uri: ${STAFF_OIDC_REDIRECT_URI:}
+  staff-session:
+    idle: PT30M            # sliding
+    absolute: PT12H        # hard limit
+    mfa-absolute: PT8H     # roles with requires_mfa (director)
   # WhatsApp number verification: disabled | mock (local/test only). No real provider adapter exists yet.
   otp:
     whatsapp.mode: ${WHATSAPP_OTP_MODE:disabled}

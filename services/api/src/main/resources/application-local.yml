@@ -14,6 +14,9 @@ unavora:
   cors-allowed-origins: http://localhost:3000
   internal.service-token: ${INTERNAL_SERVICE_TOKEN:local-dev-internal-token-not-a-secret}
   customer-auth.google.mode: ${CUSTOMER_GOOGLE_MODE:mock}     # MOCK: no Google account is contacted
+  staff-auth:                                                  # LOCAL Keycloak dev realm (synthetic users)
+    client-secret: ${STAFF_OIDC_CLIENT_SECRET:web-bff-local-dev-secret}
+    redirect-uri: ${STAFF_OIDC_REDIRECT_URI:http://localhost:3000/_bff/staff/callback}
   otp:
     whatsapp.mode: ${WHATSAPP_OTP_MODE:mock}                  # MOCK: no WhatsApp message is sent
     secret: ${OTP_HMAC_SECRET:local-dev-otp-hmac-secret-not-a-secret}

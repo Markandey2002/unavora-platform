@@ -10,9 +10,13 @@ Database checks go through `docker exec unavora-postgres psql`. Synthetic data o
 Run:  python infra/local/scripts/validate_business_flow.py
 Exit code 0 = every check passed.
 """
+import hashlib
+import hmac
 import json
+import struct
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -48,9 +52,26 @@ def http(method, url, body=None, headers=None):
             return e.code, raw.decode(errors="replace")
 
 
+# Synthetic TOTP secret of the LOCAL dev realm director (infra/local/keycloak/unavora-dev-realm.json).
+DIRECTOR_TOTP_SECRET = b"local-dev-director-totp-not-a-secret"
+
+
+def fresh_totp(secret):
+    """RFC 6238 code from a NEW 30 s window (Keycloak rejects a code reused within its window)."""
+    time.sleep(30 - (time.time() % 30) + 1)
+    counter = struct.pack(">Q", int(time.time() // 30))
+    h = hmac.new(secret, counter, hashlib.sha1).digest()
+    o = h[-1] & 0x0F
+    return str((struct.unpack(">I", h[o:o + 4])[0] & 0x7FFFFFFF) % 1_000_000).zfill(6)
+
+
 def token(who):
+    """Real Keycloak token. The director realm user requires TOTP, so the token carries amr=[pwd, otp]."""
     user, pw = USERS[who]
-    form = urllib.parse.urlencode({"grant_type": "password", "client_id": "dev-cli", "username": user, "password": pw}).encode()
+    fields = {"grant_type": "password", "client_id": "dev-cli", "username": user, "password": pw}
+    if who == "director":
+        fields["totp"] = fresh_totp(DIRECTOR_TOTP_SECRET)
+    form = urllib.parse.urlencode(fields).encode()
     with urllib.request.urlopen(urllib.request.Request(KC_TOKEN, data=form), timeout=15) as r:
         return json.loads(r.read())["access_token"]
 

@@ -12,6 +12,12 @@ unavora:
   customer-auth.google:
     mode: ${CUSTOMER_GOOGLE_MODE}
     client-id: ${GOOGLE_OAUTH_CLIENT_ID}
+  staff-auth:
+    mode: ${STAFF_AUTH_MODE}
+    issuer-uri: ${STAFF_OIDC_ISSUER_URI}
+    client-id: ${STAFF_OIDC_CLIENT_ID}
+    client-secret: ${STAFF_OIDC_CLIENT_SECRET}
+    redirect-uri: ${STAFF_OIDC_REDIRECT_URI}
   otp:
     whatsapp.mode: ${WHATSAPP_OTP_MODE}
     secret: ${OTP_HMAC_SECRET}

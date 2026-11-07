@@ -7,6 +7,7 @@ unavora:
   cors-allowed-origins: http://localhost:3000
   internal.service-token: test-internal-token
   customer-auth.google.mode: mock
+  staff-auth.mode: mock          # simulated IdP; MFA presence controlled per test
   otp:
     whatsapp.mode: mock
     secret: test-otp-hmac-secret-0123456789

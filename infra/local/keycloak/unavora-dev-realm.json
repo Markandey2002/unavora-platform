@@ -10,19 +10,82 @@
   "accessTokenLifespan": 900,
   "ssoSessionIdleTimeout": 1800,
   "ssoSessionMaxLifespan": 43200,
+  "otpPolicyType": "totp",
+  "otpPolicyAlgorithm": "HmacSHA1",
+  "otpPolicyDigits": 6,
+  "otpPolicyPeriod": 30,
+  "otpPolicyLookAheadWindow": 1,
+  "browserFlow": "unavora browser",
+  "directGrantFlow": "unavora direct grant",
+  "authenticatorConfig": [
+    { "alias": "unavora-amr-pwd", "config": { "default.reference.value": "pwd", "default.reference.maxAge": "43200" } },
+    { "alias": "unavora-amr-otp", "config": { "default.reference.value": "otp", "default.reference.maxAge": "43200" } },
+    { "alias": "unavora-amr-pwd-dg", "config": { "default.reference.value": "pwd", "default.reference.maxAge": "43200" } },
+    { "alias": "unavora-amr-otp-dg", "config": { "default.reference.value": "otp", "default.reference.maxAge": "43200" } }
+  ],
+  "authenticationFlows": [
+    {
+      "alias": "unavora browser",
+      "description": "Password, then OTP for users who have an authenticator (directors). Steps carry AMR references so tokens prove MFA.",
+      "providerId": "basic-flow", "topLevel": true, "builtIn": false,
+      "authenticationExecutions": [
+        { "authenticator": "auth-cookie", "requirement": "ALTERNATIVE", "priority": 10, "autheticatorFlow": false, "userSetupAllowed": false },
+        { "requirement": "ALTERNATIVE", "priority": 20, "autheticatorFlow": true, "flowAlias": "unavora browser forms", "userSetupAllowed": false }
+      ]
+    },
+    {
+      "alias": "unavora browser forms", "providerId": "basic-flow", "topLevel": false, "builtIn": false,
+      "authenticationExecutions": [
+        { "authenticator": "auth-username-password-form", "authenticatorConfig": "unavora-amr-pwd", "requirement": "REQUIRED", "priority": 10, "autheticatorFlow": false, "userSetupAllowed": false },
+        { "requirement": "CONDITIONAL", "priority": 20, "autheticatorFlow": true, "flowAlias": "unavora browser otp", "userSetupAllowed": false }
+      ]
+    },
+    {
+      "alias": "unavora browser otp", "providerId": "basic-flow", "topLevel": false, "builtIn": false,
+      "authenticationExecutions": [
+        { "authenticator": "conditional-user-configured", "requirement": "REQUIRED", "priority": 10, "autheticatorFlow": false, "userSetupAllowed": false },
+        { "authenticator": "auth-otp-form", "authenticatorConfig": "unavora-amr-otp", "requirement": "REQUIRED", "priority": 20, "autheticatorFlow": false, "userSetupAllowed": false }
+      ]
+    },
+    {
+      "alias": "unavora direct grant",
+      "description": "LOCAL TOOLING (dev-cli): password, then OTP for users with an authenticator; AMR references set.",
+      "providerId": "basic-flow", "topLevel": true, "builtIn": false,
+      "authenticationExecutions": [
+        { "authenticator": "direct-grant-validate-username", "requirement": "REQUIRED", "priority": 10, "autheticatorFlow": false, "userSetupAllowed": false },
+        { "authenticator": "direct-grant-validate-password", "authenticatorConfig": "unavora-amr-pwd-dg", "requirement": "REQUIRED", "priority": 20, "autheticatorFlow": false, "userSetupAllowed": false },
+        { "requirement": "CONDITIONAL", "priority": 30, "autheticatorFlow": true, "flowAlias": "unavora direct grant otp", "userSetupAllowed": false }
+      ]
+    },
+    {
+      "alias": "unavora direct grant otp", "providerId": "basic-flow", "topLevel": false, "builtIn": false,
+      "authenticationExecutions": [
+        { "authenticator": "conditional-user-configured", "requirement": "REQUIRED", "priority": 10, "autheticatorFlow": false, "userSetupAllowed": false },
+        { "authenticator": "direct-grant-validate-otp", "authenticatorConfig": "unavora-amr-otp-dg", "requirement": "REQUIRED", "priority": 20, "autheticatorFlow": false, "userSetupAllowed": false }
+      ]
+    }
+  ],
   "clients": [
     {
       "clientId": "web-bff",
-      "name": "Website BFF (confidential)",
+      "name": "Website BFF (confidential). The API performs the code exchange; tokens never reach the browser.",
       "enabled": true,
       "publicClient": false,
       "secret": "web-bff-local-dev-secret",
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": false,
-      "redirectUris": ["http://localhost:3000/_bff/auth/callback"],
+      "redirectUris": ["http://localhost:3000/_bff/staff/callback"],
       "webOrigins": ["http://localhost:3000"],
-      "attributes": { "pkce.code.challenge.method": "S256" }
+      "attributes": { "pkce.code.challenge.method": "S256", "post.logout.redirect.uris": "http://localhost:3000/*" },
+      "protocolMappers": [
+        {
+          "name": "amr (authentication methods, used for director MFA)",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-amr-mapper",
+          "config": { "id.token.claim": "true", "access.token.claim": "true", "introspection.token.claim": "true" }
+        }
+      ]
     },
     {
       "clientId": "mobile",
@@ -32,7 +95,15 @@
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": false,
       "redirectUris": ["unavora://auth/callback", "exp://127.0.0.1:8081/--/auth/callback"],
-      "attributes": { "pkce.code.challenge.method": "S256" }
+      "attributes": { "pkce.code.challenge.method": "S256" },
+      "protocolMappers": [
+        {
+          "name": "amr (authentication methods, used for director MFA)",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-amr-mapper",
+          "config": { "id.token.claim": "true", "access.token.claim": "true", "introspection.token.claim": "true" }
+        }
+      ]
     },
     {
       "clientId": "dev-cli",
@@ -40,7 +111,15 @@
       "enabled": true,
       "publicClient": true,
       "standardFlowEnabled": false,
-      "directAccessGrantsEnabled": true
+      "directAccessGrantsEnabled": true,
+      "protocolMappers": [
+        {
+          "name": "amr (authentication methods, used for director MFA)",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-amr-mapper",
+          "config": { "id.token.claim": "true", "access.token.claim": "true", "introspection.token.claim": "true" }
+        }
+      ]
     }
   ],
   "users": [
@@ -52,7 +131,15 @@
       "lastName": "Director",
       "enabled": true,
       "emailVerified": true,
-      "credentials": [{ "type": "password", "value": "Director-local-1", "temporary": false }]
+      "credentials": [
+        { "type": "password", "value": "Director-local-1", "temporary": false },
+        {
+          "type": "otp",
+          "userLabel": "LOCAL DEV ONLY synthetic authenticator",
+          "secretData": "{\"value\":\"local-dev-director-totp-not-a-secret\"}",
+          "credentialData": "{\"subType\":\"totp\",\"digits\":6,\"counter\":0,\"period\":30,\"algorithm\":\"HmacSHA1\"}"
+        }
+      ]
     },
     {
       "id": "00000000-0000-0000-0000-000000000102",
@@ -73,6 +160,16 @@
       "enabled": true,
       "emailVerified": true,
       "credentials": [{ "type": "password", "value": "Employee2-local-1", "temporary": false }]
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000199",
+      "username": "outsider.local",
+      "email": "outsider.local@example.test",
+      "firstName": "Not",
+      "lastName": "Invited",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "Outsider-local-1", "temporary": false }]
     }
   ]
 }

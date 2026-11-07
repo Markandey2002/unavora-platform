@@ -13,6 +13,8 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.jwt.BadJwtException;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import com.unavora.identity.StaffSessionAuthFilter;
+import com.unavora.identity.StaffSessions;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AnonymousAuthenticationFilter;
@@ -35,7 +37,7 @@ class SecurityConfig {
      */
     @Bean
     @Order(1)
-    SecurityFilterChain internalChain(HttpSecurity http,
+    SecurityFilterChain internalChain(HttpSecurity http, StaffSessions staffSessions,
                                       @Value("${unavora.internal.service-token:}") String serviceToken) throws Exception {
         http
             .securityMatcher("/internal/**")
@@ -43,8 +45,12 @@ class SecurityConfig {
             .cors(c -> c.disable())
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .headers(h -> h.frameOptions(f -> f.deny()))
+            // 1) service credential (the caller is our web server), 2) staff website session for CRM paths
             .addFilterBefore(new InternalServiceAuthFilter(serviceToken), AnonymousAuthenticationFilter.class)
-            .authorizeHttpRequests(a -> a.anyRequest().hasRole("INTERNAL_SERVICE"));
+            .addFilterAfter(new StaffSessionAuthFilter(staffSessions), InternalServiceAuthFilter.class)
+            .authorizeHttpRequests(a -> a
+                .requestMatchers("/internal/v1/staff/**", "/internal/v1/director/**").hasRole("STAFF")
+                .anyRequest().hasRole("INTERNAL_SERVICE"));
         return http.build();
     }
 

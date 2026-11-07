@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /** Director-only company-wide summary. KPI definitions: docs/CRM_SPECIFICATION.md. */
 @RestController
-@RequestMapping("/api/v1/director")
+@RequestMapping({"/api/v1/director", "/internal/v1/director"})   // bearer JWT | BFF staff session
 class DirectorOverviewController {
     private final JdbcClient jdbc;
 

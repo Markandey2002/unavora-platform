@@ -27,7 +27,7 @@ class EnquiryAndLeadFlowIT extends IntegrationTestBase {
     @BeforeEach
     void reset() { limiter.reset(); }
 
-    static RequestPostProcessor as(String userId) { return jwt().jwt(j -> j.subject(userId)); }
+    static RequestPostProcessor as(String userId) { return IntegrationTestBase.bearer(userId); }
 
     static String body(String phone, String propertyId, boolean consent) {
         return """

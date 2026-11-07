@@ -31,7 +31,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-java@v6
         with: { distribution: temurin, java-version: 21, cache: maven }
-      - name: mvn verify (ArchUnit, DatabaseConstraintsIT, PublicPropertyIT, EnquiryAndLeadFlowIT, SecurityIT, CustomerIdentityIT)
+      - name: mvn verify (ArchUnit, DatabaseConstraintsIT, PublicPropertyIT, EnquiryAndLeadFlowIT, SecurityIT, CustomerIdentityIT, StaffSessionIT)
         run: mvn -B verify
         working-directory: services/api        # Testcontainers uses the runner's Docker
       - uses: actions/upload-artifact@v7
@@ -97,7 +97,7 @@ jobs:
       - name: Playwright
         working-directory: apps/web
         run: npx playwright install --with-deps chromium && npm run e2e
-      - name: Business flow (customer -> enquiry -> CRM -> employee -> director, Google/OTP mock slice)
+      - name: Business flow scripts (enquiry -> CRM -> employee -> director with TOTP; customer signup mock slice)
         run: python3 infra/local/scripts/validate_business_flow.py && python3 infra/local/scripts/validate_customer_signup.py
       - if: failure()
         run: tail -n 200 api.log web.log || true

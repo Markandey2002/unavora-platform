@@ -26,6 +26,11 @@ class ArchitectureTest {
                     .should().dependOnClassesThat().resideInAPackage("com.unavora.customers.internal..");
 
     @ArchTest
+    static final ArchRule identityInternalIsPrivateToIdentity =
+            noClasses().that().resideOutsideOfPackage("com.unavora.identity..")
+                    .should().dependOnClassesThat().resideInAPackage("com.unavora.identity.internal..");
+
+    @ArchTest
     static final ArchRule crmMustNotReachPropertiesInternals =
             noClasses().that().resideInAPackage("com.unavora.crm..")
                     .should().dependOnClassesThat().resideInAPackage("com.unavora.properties.internal..");

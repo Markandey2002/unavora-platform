@@ -58,7 +58,7 @@ class CustomerIdentityIT extends IntegrationTestBase {
         return b.header("X-Internal-Service-Token", TOKEN).contentType(MediaType.APPLICATION_JSON);
     }
 
-    static RequestPostProcessor as(String userId) { return jwt().jwt(j -> j.subject(userId)); }
+    static RequestPostProcessor as(String userId) { return IntegrationTestBase.bearer(userId); }
 
     String login(String sub, String email) throws Exception {
         String res = mvc.perform(internal(post("/internal/v1/customer-auth/google"))

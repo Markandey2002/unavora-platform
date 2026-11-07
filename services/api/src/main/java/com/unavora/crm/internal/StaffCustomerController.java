@@ -38,7 +38,7 @@ import org.springframework.web.bind.annotation.RestController;
  * staff record what happened via /communications (record_origin=employee_recorded).
  */
 @RestController
-@RequestMapping("/api/v1/staff/customers")
+@RequestMapping({"/api/v1/staff/customers", "/internal/v1/staff/customers"})   // bearer JWT | BFF staff session
 class StaffCustomerController {
     private final JdbcClient jdbc;
     private final AccessService access;

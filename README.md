@@ -19,7 +19,7 @@ Docker Desktop, JDK 21, Maven 3.9+ (3.10.0 used), Node 22+ (24.12 used), Python 
 | Task | Start | RAM (measured) |
 |---|---|---|
 | Run the website + API | `postgres` only | ~45 MB |
-| Staff/director API checks with real tokens (validation scripts) | `postgres` + `keycloak` | +~560 MB |
+| Staff/director CRM sign-in at `/en/staff` and the validation scripts | `postgres` + `keycloak` | +~560 MB |
 | Backend tests (`mvn verify`) | none; Testcontainers starts and removes its own temporary PostgreSQL | temporary |
 | Not needed today | `mailpit` (no email sending yet), `minio` (opt-in profile, images unavailable) | — |
 
@@ -153,7 +153,9 @@ python infra\local\scripts\validate_customer_signup.py
 docker compose stop keycloak
 ```
 
-Local staff users (Keycloak dev realm, synthetic): `director.local`, `employee1.local`, `employee2.local`. The passwords are in `infra/local/keycloak/unavora-dev-realm.json` and must never be reused.
+Local staff users (Keycloak dev realm, synthetic): `director.local`, `employee1.local`, `employee2.local`, plus `outsider.local` (exists in Keycloak but is NOT invited to the CRM, for testing). The passwords are in `infra/local/keycloak/unavora-dev-realm.json` and must never be reused.
+
+**Staff CRM** (start `keycloak` first): open http://localhost:3000/en/staff and sign in. The director also needs an authenticator code: add the synthetic secret from the realm file to an authenticator app, or let the tests/scripts generate it (RFC 6238, HMAC-SHA1, 30 s, key = the secret's UTF-8 bytes). Keycloak accepts each code only once per 30 s window.
 
 ---
 

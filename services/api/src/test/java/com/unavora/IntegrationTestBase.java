@@ -6,6 +6,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
+import java.util.List;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 /**
@@ -31,4 +34,14 @@ public abstract class IntegrationTestBase {
     public static final String SOLD_PROPERTY = "20000000-0000-0000-0000-000000000006";
 
     @Autowired protected MockMvc mvc;
+
+    /** Bearer JWT as issued by the dev realm after password + authenticator code (amr = pwd, otp). */
+    public static RequestPostProcessor bearer(String subject) {
+        return jwt().jwt(j -> j.subject(subject).claim("amr", List.of("pwd", "otp")));
+    }
+
+    /** Bearer JWT from a password-only sign-in (no second factor). */
+    public static RequestPostProcessor bearerWithoutMfa(String subject) {
+        return jwt().jwt(j -> j.subject(subject).claim("amr", List.of("pwd")));
+    }
 }

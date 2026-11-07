@@ -11,7 +11,7 @@ Internet → CloudFront/WAF → ALB → Next.js (web) and Spring Boot (api, port
 | AuthN (staff) | OIDC (Keycloak local, Cognito later); API is a stateless JWT resource server; invitation-only accounts | PASS locally with real Keycloak tokens (flow script) |
 | AuthN (customers) | Continue with Google via BFF (PKCE, state, nonce); API verifies ID token; mock adapter locally | Mock PASS; real Google NOT RUN |
 | Browser sessions (customers) | Opaque token, SHA-256 at rest, HttpOnly SameSite=Lax cookie (`__Host-` + Secure on HTTPS), 7 d idle / 30 d absolute, logout revokes | PASS (Playwright checks HttpOnly, not readable by JS) |
-| Browser sessions (staff) | Next.js BFF, HttpOnly `__Host-` cookie, tokens server-side | **NOT IMPLEMENTED** |
+| Browser sessions (staff) | BFF + API Authorization Code + PKCE (verifier/nonce server-side), IdP tokens discarded, opaque session (SHA-256 at rest) in HttpOnly SameSite=Lax cookie (`__Host-` on HTTPS), 30 min idle / 12 h absolute (8 h MFA roles), revoked on logout, ended when user disabled | PASS (StaffSessionIT, Playwright) |
 | BFF → API | `/internal/v1/**` separate filter chain, service credential (constant-time compare), bearer refused | PASS (CustomerIdentityIT) |
 | CSRF (BFF) | Server actions: Next origin check; route handlers: Origin must equal site; SameSite=Lax | PASS (cross-origin logout → 403) |
 | AuthZ | Roles/permissions in PostgreSQL, `@PreAuthorize("@access.has(..)")`, evaluated per request | PASS |
@@ -23,7 +23,7 @@ Internet → CloudFront/WAF → ALB → Next.js (web) and Spring Boot (api, port
 | Audit | Append-only `audit_logs`; lead views and public lead creation logged | Partially implemented |
 | Secrets | None in repo; local dev values only in `compose.yaml`/`.env.example`; prod config has no defaults | Implemented |
 | Headers | nosniff, frame deny, referrer policy (API); web adds Permissions-Policy | Implemented; CSP pending |
-| MFA | Director MFA mandatory (Cognito TOTP), employees per policy; customers: Google account security + WhatsApp possession | Designed; not testable locally (dev realm has no MFA) |
+| MFA | Director MFA mandatory, enforced by the API (`roles.requires_mfa` + `amr` contains `otp`) at sign-in and on every request, for website sessions and bearer tokens. Local: Keycloak TOTP (synthetic secret); staging: Cognito TOTP | PASS locally (StaffSessionIT, Playwright with real Keycloak TOTP) |
 | Payments | Webhook signature check, idempotent events, no card data stored | Schema only |
 | Files | Private bucket, short-lived signed URLs, malware scan on upload | Designed |
 | Backups/DR | Aurora PITR, restore drill | Designed |
