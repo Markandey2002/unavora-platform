@@ -66,12 +66,16 @@ test("employee works a lead: stages, reasons, visit, completion, follow-up, dash
   await fu.getByLabel("Due").fill(due);
   await fu.getByLabel("Priority").selectOption("high");
   await fu.getByRole("button", { name: "Add follow-up" }).click();
+  // wait for this submission's own redirect: the page already shows "Saved." from completing the visit (?saved=complete),
+  // so checking the banner alone let the next fill race the navigation (CI run on c744cdf)
+  await expect(page).toHaveURL(/[?&]saved=followup/);
   await expect(page.getByRole("status")).toHaveText("Saved.");
   // the identical follow-up (same title, visit, due time, assignee) again is refused as a duplicate
   await fu.getByLabel("Title").fill(`Send cost sheet ${reference}`);
   await fu.getByLabel("Due").fill(due);
   await fu.getByLabel("Priority").selectOption("high");
   await fu.getByRole("button", { name: "Add follow-up" }).click();
+  await expect(page).toHaveURL(/[?&]error=duplicate_follow_up/);
   await expect(page.getByTestId("form-error")).toContainText("already exists");
 
   await openLead(page);
