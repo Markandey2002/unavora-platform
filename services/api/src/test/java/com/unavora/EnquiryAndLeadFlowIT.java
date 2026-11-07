@@ -126,10 +126,12 @@ class EnquiryAndLeadFlowIT extends IntegrationTestBase {
 
     @Test
     void employeeSeesOnlyOwnLeads() throws Exception {
-        mvc.perform(get("/api/v1/staff/leads").with(as(EMPLOYEE_1)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.items[?(@.reference=='LEAD-LOCAL-1')]", hasSize(1)))
-                .andExpect(jsonPath("$.items[?(@.reference=='LEAD-LOCAL-2')]", hasSize(0)));
+        var leads = allLeads(c -> get("/api/v1/staff/leads?limit=50" + c).with(as(EMPLOYEE_1)));
+        var refs = leads.stream().map(l -> (String) l.get("reference")).toList();
+        org.junit.jupiter.api.Assertions.assertTrue(refs.contains("LEAD-LOCAL-1"));
+        org.junit.jupiter.api.Assertions.assertFalse(refs.contains("LEAD-LOCAL-2"));
+        org.junit.jupiter.api.Assertions.assertTrue(leads.stream().allMatch(l -> EMPLOYEE_1.equals(l.get("assignedUserId"))),
+                "every lead an employee can list is assigned to that employee");
     }
 
     @Test

@@ -136,9 +136,11 @@ class StaffSessionIT extends IntegrationTestBase {
                 .andExpect(jsonPath("$.mfaVerified").value(true)).andExpect(jsonPath("$.mfaRequired").value(true));
         mvc.perform(staff(get("/internal/v1/director/overview"), token)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.publishedProperties").value(4));
-        mvc.perform(staff(get("/internal/v1/staff/leads?limit=50&assignee=" + EMPLOYEE_2), token)).andExpect(status().isOk())
-                .andExpect(jsonPath("$.items[?(@.reference=='LEAD-LOCAL-2')]", hasSize(1)))
-                .andExpect(jsonPath("$.items[?(@.reference=='LEAD-LOCAL-1')]", hasSize(0)));
+        var e2Leads = allLeads(c -> staff(get("/internal/v1/staff/leads?limit=50&assignee=" + EMPLOYEE_2 + c), token));
+        var refs = e2Leads.stream().map(l -> (String) l.get("reference")).toList();
+        assertTrue(refs.contains("LEAD-LOCAL-2"), "director sees another employee's lead");
+        assertTrue(!refs.contains("LEAD-LOCAL-1"));
+        assertTrue(e2Leads.stream().allMatch(l -> EMPLOYEE_2.equals(l.get("assignedUserId"))), "assignee filter applied");
     }
 
     @Test
@@ -263,9 +265,11 @@ class StaffSessionIT extends IntegrationTestBase {
     @Test
     void employeeSessionSeesOnlyOwnRecords() throws Exception {
         String e1 = login(EMPLOYEE_1, "pwd");
-        mvc.perform(staff(get("/internal/v1/staff/leads?limit=50"), e1)).andExpect(status().isOk())
-                .andExpect(jsonPath("$.items[?(@.reference=='LEAD-LOCAL-1')]", hasSize(1)))
-                .andExpect(jsonPath("$.items[?(@.reference=='LEAD-LOCAL-2')]", hasSize(0)));
+        var leads = allLeads(c -> staff(get("/internal/v1/staff/leads?limit=50" + c), e1));
+        var refs = leads.stream().map(l -> (String) l.get("reference")).toList();
+        assertTrue(refs.contains("LEAD-LOCAL-1"));
+        assertTrue(!refs.contains("LEAD-LOCAL-2"));
+        assertTrue(leads.stream().allMatch(l -> EMPLOYEE_1.equals(l.get("assignedUserId"))));
         // assignee filter cannot widen an employee's view
         mvc.perform(staff(get("/internal/v1/staff/leads?limit=50&assignee=" + EMPLOYEE_2), e1))
                 .andExpect(jsonPath("$.items[?(@.reference=='LEAD-LOCAL-2')]", hasSize(0)));

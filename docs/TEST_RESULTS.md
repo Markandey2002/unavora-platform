@@ -186,7 +186,9 @@ Precondition: working tree clean at `7a43f9e`; CI for `7a43f9e` green (owner con
 | Business-flow script / customer-signup script | PASS 19/19, 25/25 | re-run against the Slice 4 build |
 | OpenAPI 0.4.0 (`redocly lint`) | PASS | Slice 3 + Slice 4 staff endpoints documented |
 | `actionlint` on `ci.yml` | PASS | step name only |
-| GitHub CI on the Slice 4 commit | NOT RUN | not committed/pushed yet (awaiting approval) |
+| GitHub CI on the Slice 4 commit `71803d8` | **FAIL** (API job; 78/79) | owner-supplied log: `EnquiryAndLeadFlowIT.employeeSeesOnlyOwnLeads` expected LEAD-LOCAL-1 on page 1 of employee 1's leads; on Linux the test classes ran in a different order, LeadWorkflowIT ran first and filled page 1 with ~20 new leads (isolation itself held: every listed lead belonged to employee 1). End-to-end job skipped as a consequence |
+| Fix: paging-independent assertions | PASS locally | new `allLeads()` helper walks every page; the tests assert the actual rule (all listed leads belong to the caller / the filtered employee, LEAD-LOCAL-1 present, LEAD-LOCAL-2 absent) in EnquiryAndLeadFlowIT and StaffSessionIT (2 places). `mvn verify` 79/79 with `runOrder=alphabetical` and `runOrder=reversealphabetical` (the latter reproduces the CI order) |
+| GitHub CI on the fix commit | NOT RUN | awaiting approval to commit/push |
 
 Found and fixed during Slice 4:
 - **Sign-out did not end the Keycloak single sign-on session**, so the next person on the same browser saw a re-authentication page locked to the previous user (Playwright caught it). Now OIDC RP-initiated logout: the API keeps the ID token server-side only as `id_token_hint` (V12), erases it on logout and returns the end-session URL; the BFF sends the browser through Keycloak and back via `/_bff/staff/signed-out`.
