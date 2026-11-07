@@ -58,14 +58,16 @@ test("employee works a lead: stages, reasons, visit, completion, follow-up, dash
   await expect(page.getByTestId("visit-status")).toHaveText("Completed");
   await expect(page.getByTestId("visit-history")).toContainText("Completed");
 
-  // follow-up against the visit, high priority
+  // follow-up against the visit, high priority. The due time is fixed once: the form's default is "now + 24 h" at
+  // render time, so re-reading it after the redirect could fall in a different minute (CI run on a31a742).
   const fu = page.getByTestId("follow-up-form");
+  const due = istInput(2 * 24 * 3600_000);
   await fu.getByLabel("Title").fill(`Send cost sheet ${reference}`);
+  await fu.getByLabel("Due").fill(due);
   await fu.getByLabel("Priority").selectOption("high");
   await fu.getByRole("button", { name: "Add follow-up" }).click();
   await expect(page.getByRole("status")).toHaveText("Saved.");
-  // the identical follow-up again is refused as a duplicate
-  const due = await fu.getByLabel("Due").inputValue();
+  // the identical follow-up (same title, visit, due time, assignee) again is refused as a duplicate
   await fu.getByLabel("Title").fill(`Send cost sheet ${reference}`);
   await fu.getByLabel("Due").fill(due);
   await fu.getByLabel("Priority").selectOption("high");
