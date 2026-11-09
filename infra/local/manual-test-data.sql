@@ -33,6 +33,21 @@ DELETE FROM site_visits WHERE lead_id IN (SELECT id FROM mtd_old_leads) OR custo
 DELETE FROM leads WHERE id IN (SELECT id FROM mtd_old_leads);            -- cascades: history, assignments, activities, tasks, notes
 DELETE FROM customers WHERE id IN (SELECT id FROM mtd_old_customers);    -- cascades: consents, communications, tasks
 
+-- sample project (LOCAL ONLY, [SAMPLE]): recreated on every run
+DELETE FROM projects WHERE id = '70000000-0000-0000-0001-000000000001';
+INSERT INTO projects (id, locality_id, status, construction_status, possession_date, rera_registration_number, published_at)
+VALUES ('70000000-0000-0000-0001-000000000001', '10000000-0000-0000-0000-000000000002', 'published', 'under_construction',
+        (date_trunc('month', now()) + interval '18 months')::date, 'SAMPLE-RERA-NOT-VERIFIED', now() - interval '10 days');
+INSERT INTO project_translations (project_id, language, name, slug, description, review_status) VALUES
+ ('70000000-0000-0000-0001-000000000001', 'en', '[SAMPLE] Gomti Greens Residences', 'sample-gomti-greens-residences',
+  'Synthetic project for manual testing only. Not a real project. The RERA number is deliberately unverified and must not be shown.', 'approved'),
+ ('70000000-0000-0000-0001-000000000001', 'hi', '[नमूना] गोमती ग्रीन्स रेज़िडेंसेज़', 'namuna-gomti-greens-residences',
+  'केवल मैनुअल परीक्षण के लिए कृत्रिम प्रोजेक्ट। यह कोई वास्तविक प्रोजेक्ट नहीं है।', 'draft');
+INSERT INTO project_units (project_id, label, bedrooms, area_value, area_unit, base_price) VALUES
+ ('70000000-0000-0000-0001-000000000001', '2 BHK', 2, 1150, 'sq_ft', 6800000),
+ ('70000000-0000-0000-0001-000000000001', '3 BHK', 3, 1580, 'sq_ft', 9400000),
+ ('70000000-0000-0000-0001-000000000001', '3 BHK + study', 3, 1820, 'sq_ft', NULL);
+
 -- ---------- 2. extra published properties (kept between runs; inserted once) ----------
 INSERT INTO properties (id, property_type_id, locality_id, purpose, status, availability, price_amount, price_negotiable,
                         area_unit, built_up_area, plot_area, bedrooms, bathrooms, parking_spaces, furnishing,
@@ -257,4 +272,5 @@ SELECT 'manual test data loaded' AS result,
        (SELECT count(*) FROM customers WHERE public_ref LIKE 'CUS-MAN-%')  AS customers,
        (SELECT count(*) FROM leads WHERE public_ref LIKE 'LEAD-MAN-%')     AS leads,
        (SELECT count(*) FROM site_visits WHERE public_ref LIKE 'VIS-MAN-%') AS visits,
-       (SELECT count(*) FROM crm_tasks WHERE id::text LIKE '60000000-0000-0000-0001-%') AS follow_ups;
+       (SELECT count(*) FROM crm_tasks WHERE id::text LIKE '60000000-0000-0000-0001-%') AS follow_ups,
+       (SELECT count(*) FROM projects WHERE id = '70000000-0000-0000-0001-000000000001') AS projects;

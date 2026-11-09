@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
@@ -33,12 +34,20 @@ class PublicPropertyController {
     record PropertySummary(UUID id, long number, String title, String slug, String city, String locality,
                            String propertyType, BigDecimal price, boolean priceOnRequest, boolean priceNegotiable,
                            Short bedrooms, Short bathrooms, BigDecimal builtUpArea, BigDecimal plotArea, String areaUnit,
-                           String availability, boolean verified, String language) {}
+                           String availability, boolean verified, String language,
+                           String typeCode, String category) {}   // typeCode/category: stable codes for filters and UI
 
     record PropertyPage(List<PropertySummary> items, String nextCursor) {}
 
     record PropertyDetail(PropertySummary summary, String description, List<String> amenities,
                           List<String> availableLanguages) {}
+
+    /** A place with at least one public listing in the requested language. Counts come from live data only. */
+    record LocationRow(String city, String locality, long publishedCount) {}
+
+    record LocationList(List<LocationRow> items) {}
+
+    static final Set<String> CATEGORIES = Set.of("residential", "commercial", "land");
 
     private static final String SELECT = """
             SELECT p.id, p.public_number, t.title, t.slug, t.language, p.published_at,
@@ -46,7 +55,7 @@ class PublicPropertyController {
                    CASE WHEN t.language = 'hi' THEN coalesce(pt.name_hi, pt.name_en) ELSE pt.name_en END AS property_type,
                    p.price_amount, p.price_on_request, p.price_negotiable, p.bedrooms, p.bathrooms,
                    p.built_up_area, p.plot_area, p.area_unit, p.availability,
-                   (p.verification_status = 'verified') AS verified
+                   (p.verification_status = 'verified') AS verified, pt.code AS type_code, pt.category
             FROM properties p
             JOIN property_translations t ON t.property_id = p.id
             JOIN localities l ON l.id = p.locality_id
@@ -60,13 +69,15 @@ class PublicPropertyController {
                 rs.getBigDecimal("price_amount"), rs.getBoolean("price_on_request"), rs.getBoolean("price_negotiable"),
                 rs.getObject("bedrooms", Short.class), rs.getObject("bathrooms", Short.class),
                 rs.getBigDecimal("built_up_area"), rs.getBigDecimal("plot_area"), rs.getString("area_unit"),
-                rs.getString("availability"), rs.getBoolean("verified"), rs.getString("language"));
+                rs.getString("availability"), rs.getBoolean("verified"), rs.getString("language"),
+                rs.getString("type_code"), rs.getString("category"));
     }
 
     @GetMapping("/properties")
     ResponseEntity<PropertyPage> search(@RequestParam(defaultValue = "en") String lang,
                                         @RequestParam(required = false) String city,
                                         @RequestParam(required = false) String type,
+                                        @RequestParam(required = false) String category,
                                         @RequestParam(required = false) BigDecimal minPrice,
                                         @RequestParam(required = false) BigDecimal maxPrice,
                                         @RequestParam(required = false) Integer bedrooms,
@@ -80,6 +91,13 @@ class PublicPropertyController {
         params.put("lang", language);
         if (city != null && !city.isBlank()) { sql.append(" AND lower(l.city) = lower(:city)"); params.put("city", city.trim()); }
         if (type != null && !type.isBlank()) { sql.append(" AND pt.code = :type"); params.put("type", type.trim()); }
+        if (category != null && !category.isBlank()) {
+            if (!CATEGORIES.contains(category.trim())) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "bad_category", "category must be residential, commercial or land");
+            }
+            sql.append(" AND pt.category = :category");
+            params.put("category", category.trim());
+        }
         if (minPrice != null) { sql.append(" AND p.price_amount >= :minPrice"); params.put("minPrice", minPrice); }
         if (maxPrice != null) { sql.append(" AND p.price_amount <= :maxPrice"); params.put("maxPrice", maxPrice); }
         if (bedrooms != null) { sql.append(" AND p.bedrooms >= :bedrooms"); params.put("bedrooms", bedrooms.shortValue()); }
@@ -109,6 +127,24 @@ class PublicPropertyController {
         List<PropertySummary> items = rows.stream().map(Map.Entry::getKey).toList();
         return ResponseEntity.ok().cacheControl(CacheControl.maxAge(Duration.ofSeconds(60)).cachePublic())
                 .body(new PropertyPage(items, next));
+    }
+
+    /** Cities and localities that currently have public listings (same visibility rules as search). */
+    @GetMapping("/locations")
+    ResponseEntity<LocationList> locations(@RequestParam(defaultValue = "en") String lang) {
+        String language = requireLanguage(lang);
+        List<LocationRow> rows = jdbc.sql("""
+                SELECT l.city, CASE WHEN CAST(:lang AS text) = 'hi' THEN coalesce(l.name_hi, l.name_en) ELSE l.name_en END AS locality,
+                       count(DISTINCT p.id) AS n
+                FROM properties p
+                JOIN property_translations t ON t.property_id = p.id AND t.language = :lang
+                JOIN localities l ON l.id = p.locality_id
+                WHERE p.status = 'published' AND p.availability IN ('available','under_offer')
+                GROUP BY l.city, 2 ORDER BY l.city, 2""")
+                .param("lang", language)
+                .query((rs, n) -> new LocationRow(rs.getString("city"), rs.getString("locality"), rs.getLong("n"))).list();
+        return ResponseEntity.ok().cacheControl(CacheControl.maxAge(Duration.ofSeconds(60)).cachePublic())
+                .body(new LocationList(rows));
     }
 
     @GetMapping("/properties/{slug}")

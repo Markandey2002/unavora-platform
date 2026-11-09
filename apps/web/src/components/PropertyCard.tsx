@@ -1,25 +1,68 @@
 import Link from "next/link";
+import { artKind, PropertyArt, seedOf } from "@/components/site/Art";
+import { Icon } from "@/components/site/ui";
+import type { Dictionary } from "@/i18n/dictionaries";
+import type { SiteDictionary } from "@/i18n/site";
 import type { PropertySummary } from "@/lib/api";
 import { formatPrice } from "@/lib/api";
-import type { Dictionary } from "@/i18n/dictionaries";
+import { cityLabel } from "@/lib/site";
 
-export function PropertyCard({ p, lang, t }: { p: PropertySummary; lang: string; t: Dictionary }) {
+export function areaText(p: PropertySummary, s: SiteDictionary): string | null {
+  const a = p.builtUpArea ?? p.plotArea;
+  return a == null ? null : `${Number(a).toLocaleString("en-IN")} ${s.areaUnit[p.areaUnit] ?? p.areaUnit.replace("_", " ")}`;
+}
+
+export function priceText(p: PropertySummary, t: Dictionary): string {
+  return p.priceOnRequest || p.price == null ? t.priceOnRequest : formatPrice(p.price);
+}
+
+/**
+ * Listing card. The title is the card's single main link (the whole card is clickable through it); "View details" and
+ * "Enquire" are secondary links above it. Images are labelled illustrations until approved photos exist.
+ */
+export function PropertyCard({ p, lang, t, s, headingLevel = "h3" }: {
+  p: PropertySummary; lang: string; t: Dictionary; s: SiteDictionary; headingLevel?: "h2" | "h3";
+}) {
+  const href = `/${lang}/properties/${p.slug}`;
+  const H = headingLevel;
+  const area = areaText(p, s);
+  const category = s.category[p.category ?? "residential"]?.title;
   return (
-    <li className="rounded-xl border border-slate/20 bg-white p-4 shadow-sm">
-      <Link href={`/${lang}/properties/${p.slug}`} className="block min-h-11">
-        <h2 className="text-lg font-semibold">{p.title}</h2>
-        <p className="mt-1 text-sm text-slate">{p.propertyType} · {p.locality}, {p.city}</p>
-        <p className="mt-3 text-xl font-semibold">
-          {p.priceOnRequest || p.price == null ? t.priceOnRequest : formatPrice(p.price)}
-          {p.priceNegotiable && <span className="ml-2 text-xs font-normal text-slate">{t.negotiable}</span>}
+    <li className="card-lift group relative flex flex-col bg-white shadow-[var(--shadow-card)]">
+      <div className="zoom-on-hover relative aspect-[4/3] overflow-hidden bg-navy">
+        <PropertyArt kind={artKind(p.category, p.typeCode)} seed={seedOf(p.id)} label={`${s.card.illustration}: ${p.propertyType}`} />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-navy/70 to-transparent" />
+        {category && <span className="eyebrow absolute left-4 top-4 bg-ivory/95 px-2.5 py-1 !text-[0.65rem] text-navy">{category}</span>}
+        {p.availability === "under_offer" && (
+          <span className="absolute right-4 top-4 bg-navy/85 px-2.5 py-1 text-[0.7rem] font-semibold text-gold">{s.card.underOffer}</span>
+        )}
+        <span className="absolute bottom-3 right-4 text-[0.65rem] uppercase tracking-[0.18em] text-ivory/70">{s.card.illustration}</span>
+        <p className="font-display absolute bottom-3 left-4 text-2xl font-semibold text-ivory">
+          {priceText(p, t)}
         </p>
-        <p className="mt-2 text-sm text-slate">
-          {p.bedrooms != null && <span>{p.bedrooms} {t.beds} · </span>}
-          {p.bathrooms != null && <span>{p.bathrooms} {t.baths} · </span>}
-          {(p.builtUpArea ?? p.plotArea) != null && <span>{p.builtUpArea ?? p.plotArea} {p.areaUnit.replace("_", " ")}</span>}
+      </div>
+      <div className="flex flex-1 flex-col p-5">
+        <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.12em] text-muted [:lang(hi)_&]:tracking-normal">
+          <Icon name="pin" className="size-4 text-gold-700" />{p.locality}, {cityLabel(p.city, lang)}
         </p>
-        {p.verified && <span className="mt-2 inline-block rounded bg-gold/40 px-2 py-0.5 text-xs">{t.verified}</span>}
-      </Link>
+        <H className="font-display mt-2 text-xl font-semibold leading-snug text-navy">
+          <Link href={href} className="after:absolute after:inset-0 after:content-[''] focus-visible:outline-none">{p.title}</Link>
+        </H>
+        <p className="mt-1 text-sm text-muted">{p.propertyType}{p.priceNegotiable && !p.priceOnRequest && p.price != null ? ` · ${t.negotiable}` : ""}</p>
+        <ul className="mt-4 flex flex-wrap gap-x-5 gap-y-2 border-t border-navy/10 pt-4 text-sm text-navy/80">
+          {p.bedrooms != null && <li className="flex items-center gap-1.5"><Icon name="bed" className="size-4 text-muted" />{p.bedrooms} {t.beds}</li>}
+          {p.bathrooms != null && <li className="flex items-center gap-1.5"><Icon name="bath" className="size-4 text-muted" />{p.bathrooms} {t.baths}</li>}
+          {area && <li className="flex items-center gap-1.5"><Icon name="area" className="size-4 text-muted" />{area}</li>}
+        </ul>
+        <div className="relative z-10 mt-auto flex items-center justify-between gap-3 pt-5">
+          <Link href={href} tabIndex={-1} aria-hidden className="text-xs font-semibold uppercase tracking-[0.16em] text-navy hover:text-gold-700 [:lang(hi)_&]:text-sm [:lang(hi)_&]:tracking-normal">
+            {s.card.details} →
+          </Link>
+          <Link href={`${href}#enquire`} className="inline-flex min-h-10 items-center border border-navy/20 px-4 text-xs font-semibold uppercase tracking-[0.14em] text-navy transition-colors hover:border-navy hover:bg-navy hover:text-ivory [:lang(hi)_&]:text-sm [:lang(hi)_&]:tracking-normal">
+            {s.card.enquire}
+          </Link>
+        </div>
+      </div>
     </li>
   );
 }

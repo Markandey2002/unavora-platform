@@ -7,6 +7,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.everyItem;
+import static org.hamcrest.Matchers.is;
 
 import org.junit.jupiter.api.Test;
 
@@ -37,6 +40,35 @@ class PublicPropertyIT extends IntegrationTestBase {
                 .andExpect(jsonPath("$.items", hasSize(1)));
         mvc.perform(get("/api/v1/public/properties?lang=en&maxPrice=7000000"))
                 .andExpect(jsonPath("$.items", hasSize(2)));
+    }
+
+    @Test
+    void categoryFilterGroupsTypesAndListingsCarryStableCodes() throws Exception {
+        // seed: 2 apartments + 1 villa (residential), 1 plot (land), no published commercial listing
+        mvc.perform(get("/api/v1/public/properties?lang=en&category=residential"))
+                .andExpect(jsonPath("$.items", hasSize(3)))
+                .andExpect(jsonPath("$.items[*].category", everyItem(is("residential"))));
+        mvc.perform(get("/api/v1/public/properties?lang=en&category=land"))
+                .andExpect(jsonPath("$.items", hasSize(1)))
+                .andExpect(jsonPath("$.items[0].typeCode").value("plot"));
+        mvc.perform(get("/api/v1/public/properties?lang=en&category=commercial"))
+                .andExpect(jsonPath("$.items", hasSize(0)));                    // the draft office stays hidden
+        mvc.perform(get("/api/v1/public/properties?lang=hi&category=residential&city=Lucknow"))
+                .andExpect(jsonPath("$.items", hasSize(2)));
+        mvc.perform(get("/api/v1/public/properties?lang=en&category=farmhouse")).andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void locationsListOnlyPlacesWithPublicListings() throws Exception {
+        mvc.perform(get("/api/v1/public/locations?lang=en"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items", hasSize(3)))
+                .andExpect(jsonPath("$.items[?(@.city=='Lucknow')].publishedCount", contains(2)))   // villa + 2 BHK; nothing draft/sold
+                .andExpect(jsonPath("$.items[?(@.city=='Prayagraj')].publishedCount", contains(1))) // plot only; the sold flat is excluded
+                .andExpect(content().string(not(containsString("ownerUserId"))));
+        mvc.perform(get("/api/v1/public/locations?lang=hi"))
+                .andExpect(jsonPath("$.items[?(@.city=='Lucknow')].locality", contains("गोमती नगर")));
+        mvc.perform(get("/api/v1/public/locations?lang=fr")).andExpect(status().isBadRequest());
     }
 
     @Test

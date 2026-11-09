@@ -205,6 +205,21 @@ http://localhost:3000/en/staff/leads/40000000-0000-0000-0001-000000000007 (see s
 | H2 | Sign in as Employee Two | The new lead is in Leads (Lucknow listing owner), stage Assigned |
 | H3 | Employee One | Does **not** see that lead |
 
+### I. Public website (redesign, 2026-11-08)
+
+| # | Steps | Expected |
+|---|---|---|
+| I1 | http://localhost:3000/en at desktop width | Official UAI logo; hero with search; live figures; categories; featured listings; about; approach; locations; channel partners; enquiry form; footer with legal links |
+| I2 | Hero search: City Lucknow, Category Residential → Search | Listing filtered; removable filter chips; only residential Lucknow listings |
+| I3 | Header **Properties** dropdown (hover or Tab) → Plots & land | `/en/plots` shows plot listings only |
+| I4 | **हिन्दी** in the header on a filtered listing | Same page and filters in Hindi |
+| I5 | Phone width (F12 → 375 px): menu button → drawer; Esc closes it; listing → **Filters** opens a bottom sheet | Drawer and sheet work; no sideways scrolling |
+| I6 | Any property → scroll on a phone | Sticky price + **Enquire now** bar; "Illustration" notice on the image |
+| I7 | `/en/contact`: choose "Site visit" in **I am interested in**, submit | Reference `LEAD-…`; the lead appears in the CRM with that enquiry type |
+| I8 | `/en/channel-partner`: submit an application with a RERA number | Reference `LEAD-…`; director sees an unassigned channel-partner lead; RERA marked "declared, not verified" |
+| I9 | `/en/projects` → [SAMPLE] Gomti Greens Residences | Project page with unit table; the sample RERA number is NOT shown (unverified) |
+| I10 | `/en/no-such-page` | Branded 404 with header and footer |
+
 ## 6. Optional: check the local "notifications"
 
 Stage changes, assignments, visits and follow-ups write events to the local outbox (never sent anywhere):

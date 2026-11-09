@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { customerRequestAction, type RequestState } from "@/app/[lang]/account/actions";
+import { customerRequestAction, type RequestState } from "@/app/[lang]/(site)/account/actions";
 import type { Dictionary } from "@/i18n/dictionaries";
 
 /** Signed-in, WhatsApp-verified customers. Each submission becomes its own CRM lead. */

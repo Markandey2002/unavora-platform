@@ -34,4 +34,9 @@ class ArchitectureTest {
     static final ArchRule crmMustNotReachPropertiesInternals =
             noClasses().that().resideInAPackage("com.unavora.crm..")
                     .should().dependOnClassesThat().resideInAPackage("com.unavora.properties.internal..");
+
+    @ArchTest
+    static final ArchRule contentInternalIsPrivateToContent =
+            noClasses().that().resideOutsideOfPackage("com.unavora.content..")
+                    .should().dependOnClassesThat().resideInAPackage("com.unavora.content.internal..");
 }

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: UNAVORA API
-  version: 0.4.0
+  version: 0.5.0
   description: >-
     Implemented endpoints only. Behaviour is covered by MockMvc integration tests (services/api/src/test) and the local
     validation scripts; there are no automated OpenAPI contract tests yet. /internal/v1/** is called only by the
@@ -17,7 +17,8 @@ paths:
       parameters:
         - { name: lang, in: query, schema: { type: string, enum: [en, hi], default: en } }
         - { name: city, in: query, schema: { type: string } }
-        - { name: type, in: query, schema: { type: string } }
+        - { name: type, in: query, description: property type code (e.g. apartment, villa, plot), schema: { type: string } }
+        - { name: category, in: query, description: groups of types; unknown value -> 400, schema: { type: string, enum: [residential, commercial, land] } }
         - { name: minPrice, in: query, schema: { type: number } }
         - { name: maxPrice, in: query, schema: { type: number } }
         - { name: bedrooms, in: query, schema: { type: integer } }
@@ -26,6 +27,15 @@ paths:
         - { name: cursor, in: query, schema: { type: string } }
       responses:
         "200": { description: Page of properties, content: { application/json: { schema: { $ref: "#/components/schemas/PropertyPage" } } } }
+        "400": { $ref: "#/components/responses/Problem" }
+  /api/v1/public/locations:
+    get:
+      security: []
+      summary: Cities and localities that currently have public listings, with counts (same visibility rules as search)
+      parameters:
+        - { name: lang, in: query, schema: { type: string, enum: [en, hi], default: en } }
+      responses:
+        "200": { description: Locations, content: { application/json: { schema: { $ref: "#/components/schemas/LocationList" } } } }
         "400": { $ref: "#/components/responses/Problem" }
   /api/v1/public/properties/{slug}:
     get:
@@ -51,6 +61,54 @@ paths:
         "200": { description: Replay of an earlier idempotent request, content: { application/json: { schema: { $ref: "#/components/schemas/EnquiryResponse" } } } }
         "422": { $ref: "#/components/responses/Problem" }
         "429": { $ref: "#/components/responses/Problem" }
+  /api/v1/public/channel-partners:
+    post:
+      security: []
+      summary: Channel-partner application (channel_partners row with status applied + CRM lead, enquiry type channel_partner)
+      parameters:
+        - { name: Idempotency-Key, in: header, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/PartnerRequest" } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/EnquiryResponse" } } } }
+        "200": { description: Replay of an earlier idempotent request, content: { application/json: { schema: { $ref: "#/components/schemas/EnquiryResponse" } } } }
+        "422": { $ref: "#/components/responses/Problem" }
+        "429": { $ref: "#/components/responses/Problem" }
+  /api/v1/public/projects:
+    get:
+      security: []
+      summary: Published projects (new launches); RERA number only when verified
+      parameters:
+        - { name: lang, in: query, schema: { type: string, enum: [en, hi], default: en } }
+      responses:
+        "200": { description: Projects, content: { application/json: { schema: { type: object, properties: { items: { type: array, items: { $ref: "#/components/schemas/ProjectSummary" } } } } } } }
+        "400": { $ref: "#/components/responses/Problem" }
+  /api/v1/public/projects/{slug}:
+    get:
+      security: []
+      summary: Published project detail with unit types
+      parameters:
+        - { name: slug, in: path, required: true, schema: { type: string } }
+        - { name: lang, in: query, schema: { type: string, enum: [en, hi], default: en } }
+      responses:
+        "200": { description: Detail, content: { application/json: { schema: { $ref: "#/components/schemas/ProjectDetail" } } } }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/v1/public/company:
+    get:
+      security: []
+      summary: Company facts confirmed by the business (verified = true only); unverified values are never returned
+      responses:
+        "200":
+          description: Company
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  settings: { type: object, additionalProperties: { type: string }, description: "display_name, tagline, legal_name, phone, whatsapp, email, cin, rera_number when verified" }
+                  social: { type: object, additionalProperties: { type: string, format: uri } }
+                  offices: { type: array, items: { type: object, properties: { kind: { type: string }, city: { type: string }, locality: { type: [string, "null"] }, address: { type: [string, "null"] }, pinCode: { type: [string, "null"] }, phone: { type: [string, "null"] } } } }
   /api/v1/staff/leads:
     get:
       summary: Leads visible to the caller (own, or all with lead.read_all)
@@ -367,6 +425,42 @@ components:
         language: { type: string, enum: [en, hi] }
         consent: { type: boolean, const: true }
         marketingConsent: { type: boolean, description: "Optional and separate from consent. Omitted = not asked; false = declined." }
+        enquiryType: { type: string, enum: [general, callback, site_visit, residential, commercial, project], description: "Optional; ignored when propertyId is set (always a property enquiry). Unknown value -> 422" }
+    PartnerRequest:
+      type: object
+      required: [name, phone, city, consent]
+      properties:
+        name: { type: string, maxLength: 200 }
+        phone: { type: string, maxLength: 20 }
+        email: { type: string, format: email }
+        companyName: { type: string, maxLength: 200 }
+        city: { type: string, maxLength: 100 }
+        areasOfInterest: { type: string, maxLength: 500 }
+        reraNumber: { type: string, maxLength: 60, description: declared by the applicant; stored as declared, not verified }
+        message: { type: string, maxLength: 2000 }
+        language: { type: string, enum: [en, hi] }
+        consent: { type: boolean, const: true }
+    ProjectSummary:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        number: { type: integer }
+        name: { type: string }
+        slug: { type: string }
+        city: { type: [string, "null"] }
+        locality: { type: [string, "null"] }
+        constructionStatus: { type: [string, "null"] }
+        possessionDate: { type: [string, "null"], format: date }
+        startingPrice: { type: [number, "null"] }
+        unitTypes: { type: integer }
+        reraNumber: { type: [string, "null"], description: only when verified by the business }
+        language: { type: string }
+    ProjectDetail:
+      type: object
+      properties:
+        summary: { $ref: "#/components/schemas/ProjectSummary" }
+        description: { type: [string, "null"] }
+        units: { type: array, items: { type: object, properties: { label: { type: string }, bedrooms: { type: [integer, "null"] }, areaValue: { type: [number, "null"] }, areaUnit: { type: [string, "null"] }, basePrice: { type: [number, "null"] } } } }
     EnquiryResponse:
       type: object
       properties: { reference: { type: string }, status: { type: string } }
@@ -391,6 +485,19 @@ components:
         availability: { type: string }
         verified: { type: boolean }
         language: { type: string }
+        typeCode: { type: string, description: "stable type code, e.g. apartment" }
+        category: { type: string, enum: [residential, commercial, land] }
+    LocationList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              city: { type: string }
+              locality: { type: string }
+              publishedCount: { type: integer }
     PropertyPage:
       type: object
       properties:

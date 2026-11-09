@@ -4,7 +4,7 @@ Nothing below is guessed. Until confirmed, the platform shows the item as unveri
 
 | # | Item | Why it matters | Current handling |
 |---|---|---|---|
-| 1 | Final logo (green/gold UAI mark vs gold IA mark) and vector/PNG files | Brand consistency; only a raster sheet exists | Text wordmark placeholder |
+| 1 | ~~Final logo choice~~ **Resolved 2026-11-08: green-and-gold UAI logo is final.** Still open: vector master (SVG/AI/PDF) and a reversed version for dark backgrounds | Print/large formats; logo directly on navy | Website uses PNG cut-outs from the official sheet on light surfaces (CONTENT_AND_ASSET_REGISTER) |
 | 2 | Registered legal name, CIN, GST, PAN | Footer, contracts, invoices | `site_settings.company.cin` NULL; legal name `verified=false` |
 | 3 | Full addresses + PIN for Noida (registered), Lucknow, Prayagraj; map pins | Contact page, schema.org | `company_offices.full_address` NULL; cities only |
 | 4 | RERA applicability and number(s) | Legal claim; never shown without evidence | Not displayed; `rera_verified_at` required by schema |
@@ -18,7 +18,7 @@ Nothing below is guessed. Until confirmed, the platform shows the item as unveri
 | 12 | Monthly AWS budget; availability target (one vs two NAT) | Cost and resilience decisions | Defaults in ARCHITECTURE §7 |
 | 13 | Lead assignment policy beyond "property owner" (round-robin? by city?) | Fairness, first-response KPI | Property owner only; others unassigned |
 | 14 | Lead SLA targets (first response time) | KPI thresholds | Reported, not alerted |
-| 15 | Director MFA method (TOTP/SMS) | Staging with Cognito | Not enforced locally |
+| 15 | Director MFA method (TOTP/SMS) | Staging with Cognito | Enforced by the API since Slice 3 (local: Keycloak TOTP); staging method still to confirm |
 | 16 | Domain/DNS ownership and cutover plan for the existing WordPress site | No DNS change without approval | Untouched |
 | 17 | Testimonials/reviews: real, with permission only | No fabricated reviews | `reviews` table empty; moderation required |
 | 18 | Director portrait file and permission to publish | Mock-up shows one only inside an image | Not used |

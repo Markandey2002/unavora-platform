@@ -3,12 +3,65 @@
 /* Brand tokens: supplied palette image (overrides the PDF palette). */
 @theme {
   --color-navy: #101d35;
+  --color-navy-800: #172745;
+  --color-navy-700: #1f3357;
   --color-gold: #e3c58a;
+  --color-gold-600: #c9a660;
+  --color-gold-100: #f6ecd8;
   --color-ivory: #f7f5f0;
+  --color-sand: #ece6da;
   --color-slate: #64748b;
+  /* Accessible TEXT tints for light backgrounds (WCAG AA >= 4.5:1 on #F7F5F0 and the sand panels). The brand gold
+     and slate stay for buttons, rules, icons and text on navy; staff screens keep their existing colours. */
+  --color-gold-700: #7d5f27;
+  --color-muted: #56657a;
+  /* Staff/CRM screens keep the original system stack. */
   --font-sans: ui-sans-serif, system-ui, "Noto Sans Devanagari", "Segoe UI", sans-serif;
+  /* Public site: serif display + Inter body; Devanagari faces fill in for Hindi glyphs. */
+  --font-display: var(--nf-display), var(--nf-display-hi), Georgia, "Times New Roman", serif;
+  --font-body: var(--nf-body), var(--nf-body-hi), ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+  --shadow-card: 0 1px 2px rgb(16 29 53 / 0.06), 0 8px 24px -12px rgb(16 29 53 / 0.18);
+  --shadow-lift: 0 2px 4px rgb(16 29 53 / 0.06), 0 22px 40px -18px rgb(16 29 53 / 0.35);
 }
 
-html { background: var(--color-ivory); color: var(--color-navy); }
+html { background: var(--color-ivory); color: var(--color-navy); scroll-behavior: smooth; }
 body { font-family: var(--font-sans); -webkit-text-size-adjust: 100%; }
 :focus-visible { outline: 3px solid var(--color-gold); outline-offset: 2px; }
+/* Anchor targets clear the sticky header. */
+[id] { scroll-margin-top: 6rem; }
+
+.site { font-family: var(--font-body); }
+.font-display { font-family: var(--font-display); letter-spacing: -0.01em; font-variant-numeric: lining-nums; }
+:lang(hi) .font-display { letter-spacing: 0; line-height: 1.3; }
+
+/* Eyebrow label above section headings. */
+.eyebrow { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase; }
+:lang(hi) .eyebrow { letter-spacing: 0.04em; font-size: 0.85rem; }
+
+/* Subtle entrance and hover motion; disabled for users who prefer reduced motion. */
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+.rise { animation: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.rise-2 { animation-delay: 0.12s; }
+.rise-3 { animation-delay: 0.24s; }
+.card-lift { transition: transform 0.25s ease, box-shadow 0.25s ease; }
+.card-lift:hover { transform: translateY(-3px); box-shadow: var(--shadow-lift); }
+.zoom-on-hover svg { transition: transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.group:hover .zoom-on-hover svg { transform: scale(1.04); }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .rise { animation: none; }
+  .card-lift, .card-lift:hover, .group:hover .zoom-on-hover svg { transition: none; transform: none; }
+}
+
+/* Statement line: each word brightens as the line scrolls through the viewport (scroll-driven animation where
+   supported; elsewhere, and with reduced motion, the text is simply fully visible). */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    @keyframes word-in { from { color: rgb(16 29 53 / 0.18); } to { color: var(--color-navy); } }
+    .reveal-words span { animation: word-in linear both; animation-timeline: view(); }
+    .reveal-words span:nth-child(3n + 1) { animation-range: entry 30% cover 40%; }
+    .reveal-words span:nth-child(3n + 2) { animation-range: entry 45% cover 45%; }
+    .reveal-words span:nth-child(3n) { animation-range: entry 60% cover 50%; }
+  }
+}

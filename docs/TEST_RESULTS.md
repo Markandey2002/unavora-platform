@@ -1,6 +1,6 @@
 # TEST_RESULTS.md
 
-Last updated: **2026-11-07**, local Windows 11 PC (16 GB RAM). Vocabulary: **PASS / FAIL / BLOCKED / NOT RUN**. A test is PASS only if it was executed here and its output was seen. Every row below that says PASS was executed on 2026-11-07.
+Last updated: **2026-11-07**, local Windows 11 PC (16 GB RAM). Vocabulary: **PASS / FAIL / BLOCKED / NOT RUN**. A test is PASS only if it was executed here and its output was seen. Every row below that says PASS was executed on 2026-11-07. **Exception: GitHub CI results** (§9 "CI run #…" paragraphs and rows named "GitHub CI on …") report GitHub Actions runs as confirmed by the owner (logs, screenshots or confirmation pasted into the session); GitHub Actions cannot be read from this PC (no `gh` CLI, private repository). Everything else was executed locally. Earlier sections are kept as recorded at the time (e.g. §2's "`ci.yml` on GitHub: NOT RUN" predates the repository).
 
 ## 1. Environment (verified)
 | Item | Value |
@@ -200,7 +200,7 @@ Found and fixed during Slice 4:
 - Slice 3 browser tests assumed the seeded lead is on page 1 of the paged list; they now open seeded leads by id (data grows with every local run; CI starts empty).
 - A duplicate `updated_at` trigger in my first V11 draft (already present in V5) was removed before it ever ran; the `id_token_hint` column went to V12 because V11 had already been applied locally.
 
-## 12. Slice 4 follow-up: manual browser-testing data and guide (2026-11-07, uncommitted)
+## 12. Slice 4 follow-up: manual browser-testing data and guide (2026-11-07, commit `affbace`, CI green)
 
 Owner requirement from the Slice 4 request that had not been delivered: realistic synthetic data for every Slice 4
 screen and a step-by-step manual testing guide. Delivered as `infra/local/manual-test-data.sql` (re-runnable reset,
@@ -218,4 +218,26 @@ and `infra/local/scripts/director_totp.py` (prints the synthetic director code).
 | Full Playwright with the manual data loaded | **FAIL**, then PASS 34/34 | (1) `staff.spec` hard-coded "4 published properties": now compares the KPI with the public API's actual count (works with or without the extra listings). (2) My data's "today" visit, clamped to 23:45 IST, fell within 60 min of the visit the e2e test books, and the API correctly refused it (conflict rule). Clamp removed: seeded visits stay ≥2.5 h from that slot. Then 34/34 |
 | Business-flow scripts with the manual data loaded | PASS 19/19, 25/25 | |
 | Web `tsc`, Vitest | PASS, 3/3 | |
-| `mvn verify` | NOT RE-RUN | no backend code or migration changed since `f888bba` (CI green: 79/79); CI will run it on push |
+| `mvn verify` (locally) | NOT RE-RUN | no backend code or migration changed since `f888bba`; it ran in GitHub CI on `affbace` (next row) |
+| GitHub CI on `affbace` | **PASS** | owner confirmed all four jobs green (secret scan, API incl. `mvn verify`, web, end-to-end). CI starts from an empty database and does not load the manual-test data, so it verifies the `staff.spec` change without the extra listings; the with-data run is the local 34/34 above |
+
+## 13. Public website redesign (2026-11-08, uncommitted)
+
+Owner request: complete premium redesign of the public website with the official logo. Details, screenshots and
+remaining inputs: docs/UI_REVIEW.md. All rows executed locally against the production build.
+
+| Check | Result | Notes |
+|---|---|---|
+| `mvn verify` (API) | **PASS 86/86** | 6 ArchUnit (new `content` boundary) + 80 integration; new PublicSiteIT 4 (company facts verified-only, projects published-only + RERA only when verified, enquiry type stored/validated, channel-partner row + lead); PublicPropertyIT 10 (category filter, stable codes, locations) |
+| Web `tsc` | PASS | 0 errors |
+| Vitest | **PASS 11/11** | new `site.test.ts` 8 (verified-contact filtering, filter sanitising, query building, city grouping, Hindi labels) |
+| `next build` | PASS | all public, account and staff routes |
+| Playwright full suite | **FAIL 46/50, then PASS 50/50** | first full run: 4 form submissions refused with "Too many requests" (public enquiry limit 10/hour/IP, correct behaviour; the suite now submits more forms from one IP). Local profile only raised to 200/hour; then 50/50 three times: existing 34 unchanged + new `site.spec.ts` 16 |
+| Business-flow / customer-signup scripts | PASS 19/19, 25/25 | |
+| Accessibility script (structure, labels, targets, lang, skip link) | **PASS 18/18 pages at 320 px and 1440 px** | after fixes: heading jump, breadcrumb target size, branded 404 |
+| Contrast (WCAG AA, computed) | **FAIL, then fixed** | brand gold text on warm white 2.1:1, slate 4.37:1; small text now #7D5F27 / #56657A (5.45:1) |
+| SEO script (title, description, canonical, hreflang, OG, JSON-LD, sitemap, robots, 404 status) | **PASS 16/16 pages + sitemap + robots + 404** | missing listing first returned HTTP 200 (streamed soft 404); fixed by limiting loading boundaries to list pages |
+| Horizontal overflow at 320/375/390/430/768/1440 | **PASS 78/78** | 17 px overflow on phones (class conflict) and project-page overflow found and fixed |
+| OpenAPI 0.5.0 | PASS | YAML valid, all schema references resolve (`redocly lint` NOT RUN) |
+| axe-core / Lighthouse | NOT RUN | no new dependency added; recommended before go-live |
+| Owner manual review in Chrome | NOT RUN | screenshots in docs/ui-review/after |

@@ -13,6 +13,7 @@ spring:
 unavora:
   cors-allowed-origins: http://localhost:3000
   rate-limit.staff-signin-per-ip-per-10min: 200   # LOCAL: repeated browser test runs from one machine
+  rate-limit.enquiry-per-ip-per-hour: 200          # LOCAL: browser tests submit many public forms from one IP (default 10 elsewhere)
   internal.service-token: ${INTERNAL_SERVICE_TOKEN:local-dev-internal-token-not-a-secret}
   customer-auth.google.mode: ${CUSTOMER_GOOGLE_MODE:mock}     # MOCK: no Google account is contacted
   staff-auth:                                                  # LOCAL Keycloak dev realm (synthetic users)

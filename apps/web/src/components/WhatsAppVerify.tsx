@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { whatsappAction, type OtpState } from "@/app/[lang]/account/actions";
+import { whatsappAction, type OtpState } from "@/app/[lang]/(site)/account/actions";
 import type { Dictionary } from "@/i18n/dictionaries";
 
 export function WhatsAppVerify({ lang, t }: { lang: string; t: Dictionary }) {

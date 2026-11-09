@@ -155,6 +155,8 @@ docker compose stop keycloak
 
 Local staff users (Keycloak dev realm, synthetic): `director.local`, `employee1.local`, `employee2.local`, plus `outsider.local` (exists in Keycloak but is NOT invited to the CRM, for testing). The passwords are in `infra/local/keycloak/unavora-dev-realm.json` and must never be reused.
 
+**Public website configuration (web):** `SITE_URL` (public origin, used for canonical URLs, sitemap and Open Graph; default `http://localhost:3000`) and `SITE_INDEXABLE=true` only on the live production site (otherwise `robots.txt` blocks all crawling). Company phone, WhatsApp, email, offices and social links appear on the site only when marked verified in the database (`site_settings`, `company_offices`). Logo files are generated from the official sheet with `python -I assets\brand\make_logo_assets.py`; design review: [docs/UI_REVIEW.md](docs/UI_REVIEW.md).
+
 **Manual browser testing:** realistic synthetic CRM data and step-by-step test cases are in [docs/MANUAL_UI_TESTING.md](docs/MANUAL_UI_TESTING.md) (load/reset the data with `infra/local/manual-test-data.sql`).
 
 **Staff CRM** (start `keycloak` first): open http://localhost:3000/en/staff and sign in. The director also needs an authenticator code: run `python infra\local\scripts\director_totp.py` (prints the current code; `--setup` prints a key for an authenticator app), or let the tests/scripts generate it (RFC 6238, HMAC-SHA1, 30 s, key = the secret's UTF-8 bytes). Keycloak accepts each code only once per 30 s window.
