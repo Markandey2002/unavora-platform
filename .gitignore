@@ -74,3 +74,6 @@ service-account*.json
 
 # Private uploads (owner submission photos) written by the local API: never commit
 services/api/data/
+
+# downloaded local representative photos (re-downloaded by the loader)
+infra/local/representative-photos/.cache/

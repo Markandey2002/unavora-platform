@@ -14,9 +14,11 @@ export type PropertySummary = {
   featured: boolean; coverImage: string | null;
   /** Synthetic test record (only ever true in local/test deployments). */
   sample: boolean;
+  /** "representative" = licensed stock image (always labelled on the site). */
+  coverKind: string | null;
 };
 /** Approved, scanned, public media only. kind: actual_photo | render | floor_plan (stock never belongs to a listing). */
-export type Media = { url: string; alt: string | null; caption: string | null; kind: "actual_photo" | "render" | "floor_plan"; primary: boolean };
+export type Media = { url: string; alt: string | null; caption: string | null; kind: "actual_photo" | "render" | "floor_plan" | "representative"; primary: boolean };
 export type Category = "residential" | "commercial" | "land";
 export const categories: readonly Category[] = ["residential", "commercial", "land"];
 export function isCategory(v: string | undefined): v is Category {
@@ -73,6 +75,8 @@ export type ProjectSummary = {
   coverImage: string | null; coverAlt: string | null; publishedAt: string;
   /** Synthetic test record (only ever true in local/test deployments). */
   sample: boolean;
+  /** "representative" = licensed stock image (always labelled on the site). */
+  coverKind: string | null;
 };
 export type ProjectDetail = {
   summary: ProjectSummary; description: string | null;

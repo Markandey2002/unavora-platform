@@ -49,7 +49,8 @@ class PublicPropertyController {
                            String availability, boolean verified, String language,
                            String typeCode, String category,   // typeCode/category: stable codes for filters and UI
                            boolean featured, String coverImage,
-                           boolean sample) {}   // true only where the deployment shows synthetic records (local/test)
+                           boolean sample,
+                           String coverKind) {}   // "representative" = licensed stock: the website labels it   // true only where the deployment shows synthetic records (local/test)
 
     record PropertyPage(List<PropertySummary> items, String nextCursor) {}
 
@@ -80,13 +81,14 @@ class PublicPropertyController {
                    p.built_up_area, p.plot_area, p.area_unit, p.availability,
                    (p.verification_status = 'verified') AS verified, pt.code AS type_code, pt.category,
                    (p.featured_at IS NOT NULL) AS featured, p.is_sample,
-                   (SELECT m.storage_key FROM property_media m WHERE m.property_id = p.id AND m.media_type = 'image'
-                      AND m.is_public AND m.processing_status = 'ready' AND m.approved_at IS NOT NULL
-                    ORDER BY m.is_primary DESC, m.sort_order, m.created_at LIMIT 1) AS cover_key
+                   cover.storage_key AS cover_key, cover.kind AS cover_kind
             FROM properties p
             JOIN property_translations t ON t.property_id = p.id
             JOIN localities l ON l.id = p.locality_id
             JOIN property_types pt ON pt.id = p.property_type_id
+            LEFT JOIN LATERAL (SELECT m.storage_key, m.kind FROM property_media m WHERE m.property_id = p.id AND m.media_type = 'image'
+                  AND m.is_public AND m.processing_status = 'ready' AND m.approved_at IS NOT NULL
+                ORDER BY m.is_primary DESC, m.sort_order, m.created_at LIMIT 1) cover ON true
             WHERE p.status = 'published' AND p.availability IN ('available','under_offer')
             """;
 
@@ -98,7 +100,8 @@ class PublicPropertyController {
                 rs.getBigDecimal("built_up_area"), rs.getBigDecimal("plot_area"), rs.getString("area_unit"),
                 rs.getString("availability"), rs.getBoolean("verified"), rs.getString("language"),
                 rs.getString("type_code"), rs.getString("category"),
-                rs.getBoolean("featured"), mediaUrl(rs.getString("cover_key")), rs.getBoolean("is_sample"));
+                rs.getBoolean("featured"), mediaUrl(rs.getString("cover_key")), rs.getBoolean("is_sample"),
+                rs.getString("cover_key") == null ? null : rs.getString("cover_kind"));
     }
 
     @GetMapping("/properties")

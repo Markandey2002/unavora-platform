@@ -48,7 +48,7 @@ class PublicProjectController {
                           String constructionStatus, LocalDate possessionDate, BigDecimal startingPrice,
                           int unitTypes, String reraNumber, String language, String developerName,
                           String category, String typeCode, String typeName, String coverImage, String coverAlt,
-                          OffsetDateTime publishedAt, boolean sample) {}
+                          OffsetDateTime publishedAt, boolean sample, String coverKind) {}
 
     record ProjectPage(List<ProjectSummary> items, int total) {}
 
@@ -74,14 +74,14 @@ class PublicProjectController {
                    CASE WHEN p.developer_verified THEN p.developer_name END AS developer_name,
                    p.category, pt.code AS type_code,
                    CASE WHEN t.language = 'hi' THEN coalesce(pt.name_hi, pt.name_en) ELSE pt.name_en END AS type_name,
-                   cover.storage_key AS cover_key,
+                   cover.storage_key AS cover_key, cover.kind AS cover_kind,
                    CASE WHEN t.language = 'hi' THEN coalesce(cover.alt_hi, cover.alt_en) ELSE cover.alt_en END AS cover_alt
             FROM projects p
             JOIN project_translations t ON t.project_id = p.id
             LEFT JOIN localities l ON l.id = p.locality_id
             LEFT JOIN property_types pt ON pt.id = p.primary_type_id
             LEFT JOIN LATERAL (
-                SELECT m.storage_key, m.alt_en, m.alt_hi FROM project_media m
+                SELECT m.storage_key, m.alt_en, m.alt_hi, m.kind FROM project_media m
                 WHERE m.project_id = p.id AND m.media_type = 'image' AND m.is_public AND m.processing_status = 'ready'
                   AND m.approved_at IS NOT NULL
                 ORDER BY m.is_primary DESC, m.sort_order, m.created_at LIMIT 1) cover ON true
@@ -97,7 +97,8 @@ class PublicProjectController {
                 rs.getObject("possession_date", LocalDate.class), rs.getBigDecimal("starting_price"),
                 rs.getInt("unit_types"), rs.getString("rera"), rs.getString("language"), rs.getString("developer_name"),
                 rs.getString("category"), rs.getString("type_code"), rs.getString("type_name"),
-                cover, cover == null ? null : rs.getString("cover_alt"), rs.getObject("published_at", OffsetDateTime.class), rs.getBoolean("is_sample"));
+                cover, cover == null ? null : rs.getString("cover_alt"), rs.getObject("published_at", OffsetDateTime.class), rs.getBoolean("is_sample"),
+                cover == null ? null : rs.getString("cover_kind"));
     }
 
     /**

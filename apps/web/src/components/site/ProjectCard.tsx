@@ -6,7 +6,7 @@ import { formatPrice, type ProjectSummary } from "@/lib/api";
 import { cityLabel } from "@/lib/site";
 import { PhotoPending } from "./PhotoPending";
 import { SampleBadge } from "./SampleBadge";
-import { Icon } from "./ui";
+import { Icon, RepresentativeTag } from "./ui";
 
 /**
  * Published new launch. Every fact comes from the API, which returns only approved values (developer when verified,
@@ -28,6 +28,7 @@ export function ProjectCard({ p, lang, s, x, headingLevel = "h3", eager = false 
             <Image src={p.coverImage} alt={p.coverAlt ?? p.name} fill sizes="(min-width:1024px) 33vw, (min-width:640px) 50vw, 90vw"
               preload={eager} className="object-cover" />
             <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-navy/60 to-transparent" />
+            {p.coverKind === "representative" && <RepresentativeTag label={s.photo.representative} className="bottom-2 right-2" />}
           </>
         ) : (
           <PhotoPending label={x.photo.projectPending} compact />
