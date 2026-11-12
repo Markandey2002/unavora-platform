@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ExtraDictionary } from "@/i18n/extra";
 import type { SiteDictionary } from "@/i18n/site";
 import type { CompanyInfo } from "@/lib/api";
-import { cityLabel, contactFrom, whatsappHref } from "@/lib/site";
+import { cityLabel, contactFrom, whatsappHref, formatPhone } from "@/lib/site";
 import { Logo } from "./Logo";
 import { SocialIcon, socialNames } from "./SocialIcon";
 import { Icon } from "./ui";
@@ -42,8 +42,8 @@ export function Footer({ lang, t, company, extra, x }: { lang: string; t: SiteDi
 
   return (
     <footer className="bg-navy text-ivory">
-      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1.2fr] lg:px-8 lg:py-20">
-        <div className="max-w-sm">
+      <div className="mx-auto grid max-w-7xl gap-x-10 gap-y-0 px-4 py-14 md:gap-y-10 sm:px-6 md:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1.2fr] lg:px-8 lg:py-20">
+        <div className="max-w-sm pb-8 md:pb-0">
           <Logo lang={lang} plate />
           <p className="font-display mt-5 text-lg italic text-gold">{company.settings.tagline ?? "Building Trust. Creating Value."}</p>
           <p className="mt-3 text-sm leading-relaxed text-ivory/70">{t.footer.about}</p>
@@ -80,11 +80,11 @@ export function Footer({ lang, t, company, extra, x }: { lang: string; t: SiteDi
           </div>
         ))}
 
-        <div>
+        <div className="border-t border-ivory/10 pt-8 md:border-t-0 md:pt-0">
           <p className={`${head} mb-3`}>{t.footer.contact}</p>
           {c.phone || c.email || c.whatsapp || offices.length || company.settings.hours ? (
             <ul className="space-y-1 text-sm" data-testid="footer-contact">
-              {c.phone && <li><a className={link} href={`tel:${c.phone}`}><Icon name="phone" className="mr-2 size-4" />{c.phone}</a></li>}
+              {c.phone && <li><a className={link} href={`tel:${c.phone}`}><Icon name="phone" className="mr-2 size-4" />{formatPhone(c.phone)}</a></li>}
               {c.whatsapp && <li><a className={link} href={whatsappHref(c.whatsapp)} target="_blank" rel="noopener noreferrer"><Icon name="whatsapp" className="mr-2 size-4" />WhatsApp</a></li>}
               {c.email && <li><a className={link} href={`mailto:${c.email}`}><Icon name="mail" className="mr-2 size-4" />{c.email}</a></li>}
               {company.settings.hours && <li className="pt-1 text-ivory/70"><span className="font-semibold text-ivory">{x.contactExtra.hours}: </span>{company.settings.hours}</li>}

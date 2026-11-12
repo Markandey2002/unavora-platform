@@ -18,6 +18,8 @@ export type LeadRow = {
   stageName: string; enquiryType: string; propertyTitle: string | null; priority: number; assignedUserId: string | null;
   assignedUserName: string | null; nextActionAt: string | null; nextActionNote: string | null; createdAt: string;
   version: number; outcome: string; updatedAt: string;
+  /** Lead source name; campaign such as "showcase:villa" or "new-launches-interest"; visitor's preferred location. */
+  source?: string | null; campaign?: string | null; preferredLocation?: string | null;
 };
 export type LeadPage = { items: LeadRow[]; nextCursor: string | null };
 export type Activity = { type: string; summary: string; actorName: string | null; occurredAt: string };
@@ -154,6 +156,13 @@ export const staffApi = {
   updateAssociation: (s: string, id: string, body: AssociationInput) => call<AssociationRow[]>("PUT", `/internal/v1/staff/cms/associations/${id}`, { session: s, body }),
   associationAction: (s: string, id: string, action: "submit" | "publish" | "unpublish") =>
     call<AssociationRow[]>("POST", `/internal/v1/staff/cms/associations/${id}/${action}`, { session: s }),
+  // ---- illustrative showcase items (V18) ----
+  showcaseItems: (s: string) => call<ShowcaseRow[]>("GET", "/internal/v1/staff/cms/showcase", { session: s }),
+  showcaseItem: (s: string, id: string) => call<ShowcaseRow>("GET", `/internal/v1/staff/cms/showcase/${id}`, { session: s }),
+  addShowcase: (s: string, body: ShowcaseInput) => call<ShowcaseRow>("POST", "/internal/v1/staff/cms/showcase", { session: s, body }),
+  updateShowcase: (s: string, id: string, body: ShowcaseInput) => call<ShowcaseRow>("PUT", `/internal/v1/staff/cms/showcase/${id}`, { session: s, body }),
+  showcaseAction: (s: string, id: string, action: "submit" | "publish" | "unpublish" | "archive") =>
+    call<ShowcaseRow>("POST", `/internal/v1/staff/cms/showcase/${id}/${action}`, { session: s }),
   // ---- listings / projects / photos ----
   listings: (s: string, p: { status?: string; q?: string }) => call<ListingRow[]>("GET", `/internal/v1/staff/properties${qs(p)}`, { session: s }),
   listing: (s: string, id: string) => call<ListingDetail>("GET", `/internal/v1/staff/properties/${id}`, { session: s }),
@@ -323,4 +332,20 @@ export type AssociationInput = {
 export type AssociationRow = {
   id: string; name: string; relationship: string; websiteUrl: string | null; logoMediaId: string | null; relationshipConfirmedAt: string | null;
   relationshipNote: string | null; logoPermissionAt: string | null; logoPermissionNote: string | null; status: string; sortOrder: number;
+};
+
+export type ShowcaseCategory = "residential" | "villa" | "commercial" | "office" | "land" | "project_style";
+export type ShowcaseCta = "enquire" | "register_interest" | "browse" | "view_record";
+export type ShowcaseRow = {
+  id: string; category: ShowcaseCategory; titleEn: string; titleHi: string | null; descriptionEn: string; descriptionHi: string | null;
+  imageMediaId: string | null; cta: ShowcaseCta; linkedPropertyId: string | null; linkedProjectId: string | null; sortOrder: number;
+  status: "draft" | "in_review" | "published" | "unpublished" | "archived"; publishedAt: string | null; updatedAt: string;
+  imageUrl: string | null; imageKind: string | null; imageApproved: boolean;
+  /** Local demo item (is_sample): never public outside local/test. */
+  sample?: boolean;
+  history?: { action: string; at: string; by: string }[]; canPublish?: boolean;
+};
+export type ShowcaseInput = {
+  category: string; titleEn: string; titleHi: string | null; descriptionEn: string; descriptionHi: string | null; imageMediaId: string | null;
+  cta: string; linkedPropertyId: string | null; linkedProjectId: string | null; sortOrder: number | null;
 };

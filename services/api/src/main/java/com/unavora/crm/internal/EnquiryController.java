@@ -33,7 +33,13 @@ class EnquiryController {
             /** Optional, separate from the enquiry consent. null = question not asked; false = explicitly declined. */
             Boolean marketingConsent,
             /** Optional: general | callback | site_visit | residential | commercial | project. Ignored with propertyId. */
-            @Size(max = 30) String enquiryType) {}
+            @Size(max = 30) String enquiryType,
+            /** Optional: the published illustrative showcase card the visitor came from. Never a property id. */
+            UUID showcaseId,
+            /** Optional: "new_launches" = Register Your Interest when no real launch is published. */
+            @Size(max = 30) String context,
+            /** Optional city/locality preference typed by the visitor. */
+            @Size(max = 200) String preferredLocation) {}
 
     /** Website channel-partner application: stored as a channel_partners row (status applied) plus a CRM lead. */
     record PartnerRequest(

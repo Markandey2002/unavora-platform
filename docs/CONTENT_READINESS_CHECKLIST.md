@@ -7,9 +7,9 @@ until then the website shows an honest pending state or hides the section.
 
 | Item | Status |
 |---|---|
-| Public phone number (+91…) | Missing |
+| Public phone number (+91…) | **Verified 2026-11-12**: +91 83183 77108 (owner confirmed) |
 | WhatsApp Business number | Missing |
-| Active public e-mail | Missing |
+| Active public e-mail | **Verified 2026-11-12**: info@anantinfrarealty.com (owner confirmed) |
 | Registered office: full address, PIN, hours, Google Maps / OSM directions link | Missing |
 | Other offices (Noida, Lucknow, Prayagraj) with the same details | Missing |
 | Working hours | Missing |
@@ -56,3 +56,35 @@ webhook verify token; updated privacy notice covering WhatsApp messaging.
 3. Approved business content from sections 1–3.
 4. Privacy notice/terms approved; Google and WhatsApp set up as in section 4 (or kept disabled).
 5. robots.txt switched to allow indexing only on the production domain.
+
+## Status 2026-11-12
+
+Still needed from the business: WhatsApp Business number, office addresses/PIN/hours/directions, working hours,
+official social-media URLs (Instagram, Facebook, LinkedIn, YouTube, X), legal name/CIN/RERA confirmation, director
+name confirmation, real listings and projects with photographs. Sample records currently use labelled representative
+photos (Unsplash licence) until real photographs are supplied.
+
+## 6. Replacing illustrative content with genuine assets (no code changes needed)
+
+| Content | Where it is replaced | What is needed from the company |
+|---|---|---|
+| Showcase cards ("Explore property styles") | CRM → Website content → Showcase: edit text, replace the image, link a published real record, or archive | Approved wording (en/hi); own or licensed photographs |
+| Property photographs | CRM → Listings → photos (upload → scan → approve; replace representative ones) | Photographs of each real property, photographer/credit |
+| Project photographs / renders | CRM → Projects → photos | Official photos or renders with permission |
+| Verified new launches | CRM → Projects (create → review → publish); the "Discover upcoming opportunities" panel disappears automatically | Developer agreement, project facts |
+| Prices | Listing/project price + "approved" flag | Approved price list or "price on request" |
+| Availability | Listing availability (available / under offer / sold) | Owner confirmation |
+| Project details (possession, specifications) | Project form; possession shown only when documented | Documents |
+| RERA details | Project/company RERA fields, shown only when verified | Registration numbers verified on the RERA portal |
+| Office addresses, hours, map links | Company facts → offices | Full address, PIN, hours, directions link |
+| Social links | Company facts → social.* (hidden until set and verified) | Official profile URLs |
+| WhatsApp number | Company facts → whatsapp | WhatsApp Business number |
+| Leadership content | About page text (CMS) | Director names, photos, approved bios |
+| Testimonials | CRM → Testimonials (needs recorded consent) | Real customer text and written permission |
+| Articles / videos | CRM → Insights | Original articles, approved YouTube links |
+| Partner associations | CRM → Associations (relationship + logo permission) | Confirmation letters / permission |
+| Legal details | Terms, privacy, company legal name/CIN | Lawyer-reviewed text, registration documents |
+| Hero / category images | CMS → Home hero, Category tiles, Image library | Brand photography (optional; licensed stock is labelled) |
+
+Local demo showcase items come from `infra/local/showcase/load_showcase_demo.py` (local only; generic wording, Unsplash
+images); production showcase content is written and approved by the director in the CMS.

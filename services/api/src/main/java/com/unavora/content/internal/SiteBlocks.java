@@ -19,7 +19,7 @@ import tools.jackson.databind.json.JsonMapper;
  */
 final class SiteBlocks {
     static final JsonMapper JSON = JsonMapper.builder().build();
-    static final List<String> SECTIONS = List.of("launches", "featured", "categories", "locations", "why", "about", "owner",
+    static final List<String> SECTIONS = List.of("launches", "featured", "showcase", "categories", "locations", "why", "about", "owner",
             "partner", "insights", "videos", "testimonials", "associations", "enquiry");
     static final Set<String> TILE_KEYS = Set.of("residential", "commercial", "land", "office");
     /** SEO override blocks: key "seo.<page>" -> public path. */

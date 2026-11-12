@@ -14,7 +14,7 @@ export const metadata: Metadata = { title: "Website block" };
 type Props = { params: Promise<{ lang: string; key: string }>; searchParams: Promise<Record<string, string | undefined>> };
 type Json = Record<string, unknown>;
 const KEY = /^(home\.(hero|tiles|sections)|careers\.page|seo\.[a-z-]{2,40})$/;
-const SECTIONS = ["launches", "featured", "categories", "locations", "why", "about", "owner", "partner", "insights", "videos", "testimonials", "associations", "enquiry"];
+import { SECTION_ORDER as SECTIONS, withNewSections } from "@/lib/sections";
 
 /** Editor for one website block: draft form, workflow buttons (submit / publish / unpublish) and history. */
 export default async function BlockEditor({ params, searchParams }: Props) {
@@ -78,7 +78,7 @@ export default async function BlockEditor({ params, searchParams }: Props) {
       );
     });
   } else if (key === "home.sections") {
-    const order = (d.order as string[] | undefined) ?? SECTIONS;
+    const order = withNewSections(d.order as string[] | undefined);
     const hiddenSet = new Set((d.hidden as string[] | undefined) ?? []);
     form = (
       <ol className="grid gap-2">

@@ -6,21 +6,22 @@ import { EnquiryForm } from "@/components/EnquiryForm";
 import { PropertyCard } from "@/components/PropertyCard";
 import { HeroArt, PropertyArt, seedOf } from "@/components/site/Art";
 import { ProjectCard } from "@/components/site/ProjectCard";
+import { ShowcaseSection } from "@/components/site/ShowcaseSection";
 import { HeroSearch, SearchFields } from "@/components/site/SearchPanel";
 import { FinderSheet } from "@/components/site/SearchSheet";
 import { Arrow, btn, Eyebrow, Icon, RepresentativeTag, SectionHeading } from "@/components/site/ui";
 import { getDictionary, type Lang } from "@/i18n/dictionaries";
 import { getSiteDictionary } from "@/i18n/site";
-import { getArticles, getAssociations, getCompany, getLocations, getProjects, getTestimonials, searchProperties, type PropertyPage, type SiteBlocks } from "@/lib/api";
+import { getArticles, getAssociations, getCompany, getLocations, getProjects, getShowcase, getTestimonials, searchProperties, type PropertyPage, type SiteBlocks } from "@/lib/api";
 import { getExtraDictionary } from "@/i18n/extra";
 import { ArticleCard } from "@/components/site/ArticleCard";
 import { LiteYouTube } from "@/components/site/InsightsParts";
 import { photos } from "@/lib/assets";
 import { jsonLd, siteUrl } from "@/lib/seo";
-import { cityLabel, citySlug, contactFrom, groupByCity, whatsappHref } from "@/lib/site";
+import { cityLabel, citySlug, contactFrom, groupByCity, whatsappHref, formatPhone } from "@/lib/site";
 
-/** Default order of the homepage sections under the hero and search (the director can reorder or hide them). */
-export const SECTION_ORDER = ["launches", "featured", "categories", "locations", "why", "about", "owner", "partner", "insights", "videos", "testimonials", "associations", "enquiry"];
+export { SECTION_ORDER, withNewSections } from "@/lib/sections";
+import { withNewSections } from "@/lib/sections";
 
 const empty: PropertyPage = { items: [], nextCursor: null };
 const countOf = (p: PropertyPage) => p.items.length + (p.nextCursor ? 1 : 0);
@@ -39,12 +40,15 @@ export async function HomeView({ lang, blocks, preview = false }: { lang: Lang; 
     safe(searchProperties(lang, { type: "office", limit: "50" }), empty),
     getCompany(),
   ]);
-  const associations = await getAssociations();
+  const [associations, showcase] = await Promise.all([getAssociations(), getShowcase(lang)]);
   const x = getExtraDictionary(lang);
   const [insights, videos, testimonials] = await Promise.all([
     getArticles(lang, { kind: "article", limit: 3 }), getArticles(lang, { kind: "video", limit: 2 }), getTestimonials(lang),
   ]);
   const cities = groupByCity(locations);
+  const projectStyle = showcase.find((i) => i.category === "project_style");
+  const discoverPhoto = projectStyle ? { src: projectStyle.image.url, alt: projectStyle.image.alt }
+    : photos.commercial ? { src: photos.commercial.src, alt: lang === "hi" ? photos.commercial.alt.hi : photos.commercial.alt.en } : null;
   const contact = contactFrom(company);
 
   const categoryCards: { key: "residential" | "commercial" | "land" | "office"; title: string; body: string; href: string; count: number }[] = [
@@ -64,7 +68,7 @@ export async function HomeView({ lang, blocks, preview = false }: { lang: Lang; 
     .map((c) => ({ ...c, override: tileOverrides.get(c.key) }))
     .filter((c) => c.override?.visible !== false)
     .sort((a, b) => (blocks.tiles ? blocks.tiles.findIndex((tile) => tile.key === a.key) - blocks.tiles.findIndex((tile) => tile.key === b.key) : 0));
-  const order = blocks.sections?.order ?? SECTION_ORDER;
+  const order = withNewSections(blocks.sections?.order);
   const hidden = new Set(blocks.sections?.hidden ?? []);
 
   const org = {
@@ -103,19 +107,30 @@ export async function HomeView({ lang, blocks, preview = false }: { lang: Lang; 
               <div className="mt-6 sm:hidden"><Link href={`/${lang}/projects`} className={`${btn.outline} w-full`}>{s.launches.viewAll}</Link></div>
             </>
           ) : (
-            <div className="mt-10 flex flex-col items-start justify-between gap-6 border border-navy/10 bg-white p-6 sm:p-8 md:flex-row md:items-center">
-              <div className="max-w-2xl">
-                <p className="font-display text-2xl font-semibold">{x.launch.empty}</p>
-                <p className="mt-2 text-sm leading-relaxed text-muted">{x.launch.emptyNote}</p>
+            // No approved real launch: no fictional project, a premium "Discover upcoming opportunities" panel with a
+            // representative image and Register Your Interest (general project-interest lead, no project id).
+            <div className="mt-10 grid overflow-hidden bg-navy text-ivory lg:grid-cols-[1.1fr_1fr]" data-testid="launch-discover">
+              <div className="relative min-h-64 lg:min-h-full">
+                {discoverPhoto && <Image src={discoverPhoto.src} alt={discoverPhoto.alt} fill sizes="(min-width:1024px) 55vw, 100vw" className="object-cover" />}
+                <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-navy/80 via-navy/20 to-transparent lg:bg-gradient-to-r lg:from-transparent lg:via-transparent lg:to-navy/40" />
+                <RepresentativeTag label={x.showcase.imageNote} className="bottom-3 left-3" />
               </div>
-              <Link href={`/${lang}/projects#project-interest`} className={btn.navy}>{x.launch.emptyCta}<Arrow /></Link>
+              <div className="p-6 sm:p-10">
+                <p className="eyebrow text-gold">{x.showcase.discoverEyebrow}</p>
+                <p className="font-display mt-3 text-3xl font-semibold leading-tight">{x.showcase.discoverTitle}</p>
+                <p className="mt-3 text-sm leading-relaxed text-ivory/75">{x.showcase.discoverNote}</p>
+                <div className="mt-6 bg-white p-5 text-navy sm:p-6">
+                  <EnquiryForm lang={lang} t={t} f={s.form} variant="callback" title={x.launch.emptyCta} id="launch-interest"
+                    context="new_launches" locationLabel={x.showcase.location} />
+                </div>
+              </div>
             </div>
           )}
         </div>
       </section>
       </>
     ),
-    featured: (
+    featured: featured.items.length === 0 ? null : (
       <>
       {/* 5. Featured properties (director-chosen first, then newest) */}
       <section aria-labelledby="featured-title" className="bg-sand/60">
@@ -124,9 +139,7 @@ export async function HomeView({ lang, blocks, preview = false }: { lang: Lang; 
             <SectionHeading id="featured-title" eyebrow={s.featured.eyebrow} title={s.featured.title} sub={s.featured.sub} />
             <span className="hidden sm:inline-flex"><Link href={`/${lang}/properties`} className={btn.outline}>{s.featured.viewAll}</Link></span>
           </div>
-          {featured.items.length === 0 ? (
-            <p className="mt-10 text-muted">{s.featured.empty}</p>
-          ) : (
+          {(
             <ul className="-mx-4 mt-10 flex snap-x snap-mandatory gap-5 overflow-x-auto px-4 pb-4 sm:mx-0 sm:grid sm:snap-none sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-3 [&>li]:w-[85%] [&>li]:shrink-0 [&>li]:snap-start sm:[&>li]:w-auto">
               {featured.items.map((p) => <PropertyCard key={p.id} p={p} lang={lang} t={t} s={s} />)}
             </ul>
@@ -136,6 +149,7 @@ export async function HomeView({ lang, blocks, preview = false }: { lang: Lang; 
       </section>
       </>
     ),
+    showcase: showcase.length === 0 ? null : <ShowcaseSection lang={lang} items={showcase} x={x} />,
     categories: (
       <>
       {/* 6. Categories */}
@@ -386,7 +400,7 @@ export async function HomeView({ lang, blocks, preview = false }: { lang: Lang; 
           <div>
             <SectionHeading id="cta-title" eyebrow={s.cta.eyebrow} title={s.cta.title} sub={s.cta.sub} />
             <ul className="mt-8 space-y-3">
-              {contact.phone && <li><a href={`tel:${contact.phone}`} className={btn.text}><Icon name="phone" />{s.cta.call}: {contact.phone}</a></li>}
+              {contact.phone && <li><a href={`tel:${contact.phone}`} className={btn.text}><Icon name="phone" />{s.cta.call}: {formatPhone(contact.phone)}</a></li>}
               {contact.whatsapp && <li><a href={whatsappHref(contact.whatsapp, s.cta.whatsappText)} target="_blank" rel="noopener noreferrer" className={btn.text}><Icon name="whatsapp" />{s.cta.whatsapp}</a></li>}
               {contact.email && <li><a href={`mailto:${contact.email}`} className={btn.text}><Icon name="mail" />{contact.email}</a></li>}
               <li><Link href={`/${lang}/properties`} className={btn.text}><Icon name="building" />{s.cta.browse} →</Link></li>

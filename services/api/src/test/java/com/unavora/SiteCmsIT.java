@@ -56,7 +56,7 @@ class SiteCmsIT extends IntegrationTestBase {
                 .andExpect(status().isUnprocessableEntity());
         mvc.perform(put(CMS + "/blocks/home.sections").with(bearer(DIRECTOR)).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"order\":[\"featured\",\"launches\"],\"hidden\":[\"videos\"]}"))
-                .andExpect(jsonPath("$.draft.order[0]").value("featured")).andExpect(jsonPath("$.draft.order.length()").value(13));
+                .andExpect(jsonPath("$.draft.order[0]").value("featured")).andExpect(jsonPath("$.draft.order.length()").value(14));
         mvc.perform(put(CMS + "/blocks/seo.secret").with(bearer(DIRECTOR)).contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isNotFound());
         mvc.perform(put(CMS + "/blocks/seo.about").with(bearer(DIRECTOR)).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"en\":{\"title\":\"About UNAVORA ANANT INFRA\",\"description\":\"Who we are and how we work with buyers.\"}}")).andExpect(status().isOk());

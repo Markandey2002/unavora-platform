@@ -62,7 +62,29 @@ export type EnquiryInput = {
   marketingConsent?: boolean;
   /** general | callback | site_visit | residential | commercial | project (API validates; ignored with propertyId). */
   enquiryType?: string;
+  /** Published illustrative showcase card the visitor came from (never a property id). */
+  showcaseId?: string;
+  /** "new_launches" = Register Your Interest while no real launch is published. */
+  context?: string;
+  preferredLocation?: string;
 };
+
+/** Illustrative showcase card (GET /api/v1/public/showcase). Deliberately has no price or property facts. */
+export type ShowcaseItem = {
+  id: string; category: "residential" | "villa" | "commercial" | "office" | "land" | "project_style";
+  title: string; description: string; illustrative: true;
+  image: { url: string; alt: string; kind: string; credit: string };
+  cta: "enquire" | "register_interest" | "browse" | "view_record";
+  link: { type: "property" | "project"; slug: string } | null;
+};
+
+export async function getShowcase(lang: string): Promise<ShowcaseItem[]> {
+  try {
+    const res = await fetch(`${base}/api/v1/public/showcase?lang=${lang === "hi" ? "hi" : "en"}`, { next: { revalidate: 60, tags: [PUBLIC_TAG] } });
+    if (res.ok) return res.json();
+  } catch { /* the section hides itself */ }
+  return [];
+}
 
 export type ProjectSummary = {
   id: string; number: number; name: string; slug: string; city: string | null; locality: string | null;

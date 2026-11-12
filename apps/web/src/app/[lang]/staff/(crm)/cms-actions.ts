@@ -125,3 +125,31 @@ export async function associationAction(f: FormData) {
   if (!["submit", "publish", "unpublish"].includes(a)) redirect(`/${l}/staff/content/associations?error=generic`);
   done(l, "content/associations", await staffApi.associationAction(await session(l), safeId(str(f, "id")), a as "submit"));
 }
+
+// ---- illustrative showcase items ----
+const SHOWCASE_ACTIONS = ["submit", "publish", "unpublish", "archive"] as const;
+
+export async function saveShowcase(f: FormData) {
+  const l = lang(f), id = safeId(str(f, "id"));
+  const link = str(f, "link");   // "", "property:<id>" or "project:<id>"
+  const [linkType, linkId] = link.split(":");
+  const body = {
+    category: str(f, "category"), titleEn: str(f, "titleEn"), titleHi: str(f, "titleHi") || null,
+    descriptionEn: str(f, "descriptionEn"), descriptionHi: str(f, "descriptionHi") || null,
+    imageMediaId: safeId(str(f, "imageMediaId")) || null, cta: str(f, "cta") || "enquire",
+    linkedPropertyId: linkType === "property" ? safeId(linkId ?? "") || null : null,
+    linkedProjectId: linkType === "project" ? safeId(linkId ?? "") || null : null,
+    sortOrder: str(f, "sortOrder") === "" ? null : Number(str(f, "sortOrder")) || 0,
+  };
+  const s = await session(l);
+  if (id) done(l, `content/showcase/${id}`, await staffApi.updateShowcase(s, id, body));
+  const r = await staffApi.addShowcase(s, body);
+  if (r.ok) done(l, `content/showcase/${r.data.id}`, r);
+  done(l, "content/showcase", r);
+}
+
+export async function showcaseAction(f: FormData) {
+  const l = lang(f), id = safeId(str(f, "id")), a = str(f, "action") as (typeof SHOWCASE_ACTIONS)[number];
+  if (!id || !SHOWCASE_ACTIONS.includes(a)) redirect(`/${l}/staff/content/showcase?error=generic`);
+  done(l, `content/showcase/${id}`, await staffApi.showcaseAction(await session(l), id, a));
+}

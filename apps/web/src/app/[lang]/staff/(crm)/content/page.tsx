@@ -18,6 +18,7 @@ export default async function ContentHub({ params }: { params: Promise<{ lang: s
   const x = getExtraDictionary(lang);
   const items = [
     can(me, "cms.manage") && ["site", x.cms.site],
+    can(me, "cms.manage") && ["showcase", x.cms.showcase],
     can(me, "cms.manage") && ["library", x.cms.library],
     can(me, "cms.manage") && ["associations", x.cms.associations],
     can(me, "cms.manage") && ["articles", x.staff.articles],
