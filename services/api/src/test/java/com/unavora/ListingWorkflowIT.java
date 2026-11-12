@@ -108,7 +108,7 @@ class ListingWorkflowIT extends IntegrationTestBase {
 
     @Test
     void approvedOwnerSubmissionBecomesOneDraftListingWithOnlyCleanPhotos() throws Exception {
-        String phone = "98" + String.valueOf(System.nanoTime()).substring(5, 13);
+        String phone = "98" + String.format("%08d", java.util.concurrent.ThreadLocalRandom.current().nextInt(100_000_000));
         String res = mvc.perform(multipart("/api/v1/public/property-submissions")
                         .file(new MockMultipartFile("photos", "a.png", "image/png", PNG))
                         .param("name", "Owner Convert").param("phone", phone).param("city", "Noida").param("locality", "Sector 50")
