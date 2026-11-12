@@ -6,9 +6,11 @@ import { PageHero } from "@/components/site/PageHero";
 import { btn, Icon } from "@/components/site/ui";
 import { getDictionary, isLang } from "@/i18n/dictionaries";
 import { getSiteDictionary } from "@/i18n/site";
-import { getCompany, getLocations } from "@/lib/api";
-import { pageMeta } from "@/lib/seo";
+import { getCompany, getLocations, searchProperties } from "@/lib/api";
+import { getExtraDictionary } from "@/i18n/extra";
+import { seoMeta } from "@/lib/seo";
 import { cityLabel, contactFrom, groupByCity, whatsappHref } from "@/lib/site";
+import { SocialIcon, socialNames } from "@/components/site/SocialIcon";
 
 type Props = { params: Promise<{ lang: string }> };
 
@@ -16,7 +18,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { lang } = await params;
   if (!isLang(lang)) return {};
   const s = getSiteDictionary(lang);
-  return pageMeta(lang, "/contact", s.contact.title, s.contact.sub);
+  return seoMeta(lang, "/contact", s.contact.title, s.contact.sub);
 }
 
 /** Contact: full enquiry form (-> CRM lead with the chosen enquiry type) and only verified contact channels. */
@@ -25,7 +27,9 @@ export default async function ContactPage({ params }: Props) {
   if (!isLang(lang)) notFound();
   const t = getDictionary(lang);
   const s = getSiteDictionary(lang);
-  const [company, locations] = await Promise.all([getCompany(), getLocations(lang).catch(() => [])]);
+  const [company, locations, listing] = await Promise.all([getCompany(), getLocations(lang).catch(() => []),
+    searchProperties(lang, { limit: "50" }).catch(() => ({ items: [], nextCursor: null }))]);
+  const x = getExtraDictionary(lang);
   const c = contactFrom(company);
   const offices = company.offices.filter((o) => o.address);
   const cities = groupByCity(locations);
@@ -35,7 +39,8 @@ export default async function ContactPage({ params }: Props) {
         eyebrow={s.cta.eyebrow} title={s.contact.title} sub={s.contact.sub} />
       <div className="mx-auto grid max-w-7xl gap-12 px-4 py-14 sm:px-6 lg:grid-cols-[1.2fr_1fr] lg:gap-20 lg:px-8 lg:py-20">
         <div id="enquiry" className="bg-white p-6 shadow-[var(--shadow-card)] sm:p-10">
-          <EnquiryForm lang={lang} t={t} f={s.form} variant="full" title={s.form.title} id="contact-enquiry" />
+          <EnquiryForm lang={lang} t={t} f={s.form} variant="full" title={s.form.title} id="contact-enquiry"
+            properties={listing.items.map((p) => ({ id: p.id, title: p.title }))} propertyLabels={{ label: x.contact.property, none: x.contact.none }} />
         </div>
         <div className="space-y-10">
           <section aria-labelledby="channels">
@@ -49,6 +54,20 @@ export default async function ContactPage({ params }: Props) {
             ) : (
               <p className="mt-3 text-sm leading-relaxed text-muted">{s.footer.contactPending}</p>
             )}
+            {company.settings.hours && <p className="mt-4 text-sm"><span className="font-semibold">{x.contactExtra.hours}: </span>{company.settings.hours}</p>}
+            {Object.keys(company.social).length > 0 && (
+              <div className="mt-6">
+                <p className="eyebrow text-gold-700">{x.contactExtra.follow}</p>
+                <ul className="mt-3 flex flex-wrap gap-2" data-testid="contact-social">
+                  {Object.entries(company.social).filter(([, href]) => /^https:\/\/\S+$/.test(href)).map(([k, href]) => (
+                    <li key={k}>
+                      <a href={href} target="_blank" rel="noopener noreferrer me" aria-label={socialNames[k] ?? k}
+                        className="inline-flex size-11 items-center justify-center border border-navy/20 text-navy hover:border-navy"><SocialIcon name={k} /></a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </section>
           <section aria-labelledby="cities">
             <h2 id="cities" className="font-display text-2xl font-semibold">{s.contact.offices}</h2>
@@ -56,8 +75,13 @@ export default async function ContactPage({ params }: Props) {
               <ul className="mt-4 grid gap-4">
                 {offices.map((o) => (
                   <li key={o.city + o.address} className="border-l-2 border-gold bg-white p-4 text-sm">
-                    <p className="font-semibold">{cityLabel(o.city, lang)}</p><p className="mt-1 text-muted">{o.address}{o.pinCode ? ` – ${o.pinCode}` : ""}</p>
-                    {o.phone && <a href={`tel:${o.phone}`} className="mt-1 inline-block underline">{o.phone}</a>}
+                    <p className="font-semibold">{o.kind === "registered" ? x.contactExtra.registered : x.contactExtra.branch} · {cityLabel(o.city, lang)}</p>
+                    <p className="mt-1 text-muted">{o.address}{o.pinCode ? ` – ${o.pinCode}` : ""}</p>
+                    {o.hours && <p className="mt-1 text-muted">{x.contactExtra.hours}: {o.hours}</p>}
+                    <p className="mt-1 flex flex-wrap gap-4">
+                      {o.phone && <a href={`tel:${o.phone}`} className="inline-flex min-h-10 items-center underline">{o.phone}</a>}
+                      {o.directionsUrl && <a href={o.directionsUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 items-center underline">{x.contactExtra.directions} ↗</a>}
+                    </p>
                   </li>
                 ))}
               </ul>

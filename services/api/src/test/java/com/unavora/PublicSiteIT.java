@@ -51,7 +51,7 @@ class PublicSiteIT extends IntegrationTestBase {
         jdbc.sql("INSERT INTO project_units (project_id, label, bedrooms, area_value, area_unit, base_price) VALUES (:p, '2 BHK', 2, 1100, 'sq_ft', 6500000), (:p, '3 BHK', 3, 1500, 'sq_ft', 9000000)")
                 .param("p", published).update();
 
-        mvc.perform(get("/api/v1/public/projects?lang=en"))
+        mvc.perform(get("/api/v1/public/projects?lang=en&q=" + tag))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[*].slug", hasItem("sample-project-" + tag)))
                 .andExpect(jsonPath("$.items[*].slug", not(hasItem("draft-project-" + tag))));
@@ -59,16 +59,19 @@ class PublicSiteIT extends IntegrationTestBase {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.summary.name").value("Sample Project " + tag))
                 .andExpect(jsonPath("$.summary.city").value("Noida"))
-                .andExpect(jsonPath("$.summary.startingPrice").value(6500000))
+                .andExpect(jsonPath("$.summary.startingPrice").doesNotExist())   // price not approved for publication yet
+                .andExpect(jsonPath("$.units[0].basePrice").doesNotExist())
                 .andExpect(jsonPath("$.summary.unitTypes").value(2))
                 .andExpect(jsonPath("$.summary.reraNumber").doesNotExist())           // declared but not verified
                 .andExpect(jsonPath("$.units.length()").value(2));
         mvc.perform(get("/api/v1/public/projects/draft-project-" + tag + "?lang=en")).andExpect(status().isNotFound());
         mvc.perform(get("/api/v1/public/projects/sample-project-" + tag + "?lang=hi")).andExpect(status().isNotFound()); // no hi translation
 
-        jdbc.sql("UPDATE projects SET rera_verified_at = now() WHERE id = :p").param("p", published).update();
+        jdbc.sql("UPDATE projects SET rera_verified_at = now(), price_public = true WHERE id = :p").param("p", published).update();
         mvc.perform(get("/api/v1/public/projects/sample-project-" + tag + "?lang=en"))
-                .andExpect(jsonPath("$.summary.reraNumber").value("UPRERAPRJ-" + tag));
+                .andExpect(jsonPath("$.summary.reraNumber").value("UPRERAPRJ-" + tag))
+                .andExpect(jsonPath("$.summary.startingPrice").value(6500000))
+                .andExpect(jsonPath("$.units[0].basePrice").value(6500000));
         mvc.perform(get("/api/v1/public/projects?lang=xx")).andExpect(status().isBadRequest());
     }
 

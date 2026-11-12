@@ -114,6 +114,26 @@ class EnquiryService {
         return new EnquiryResult(created.reference(), true);
     }
 
+    /** Owner property submission: customer (category owner_seller when new) + consent + unassigned CRM lead. */
+    @Transactional
+    EnquiryResult submitOwner(String name, String phoneRaw, String emailRaw, String language, String message, String city,
+                              String locality, String propertyType, String purpose, UUID idempotencyKey, String clientIp) {
+        String ipHash = rateLimit(clientIp);
+        Optional<String> existing = existing(idempotencyKey);
+        if (existing.isPresent()) return new EnquiryResult(existing.get(), false);
+        String phone = PhoneNumbers.toE164(phoneRaw);
+        String email = emailRaw == null || emailRaw.isBlank() ? null : emailRaw.trim().toLowerCase();
+        UUID customerId = customer(name, phone, email, language, "owner_seller");
+        leads.recordConsent(customerId, "service_contact", true, "website_owner");
+        String summary = "Owner wants to " + ("rent".equals(purpose) ? "rent out" : "sell") + " a " + propertyType.replace('_', ' ')
+                + " in " + (locality == null || locality.isBlank() ? "" : locality.trim() + ", ") + city.trim() + "."
+                + (blankToNull(message) != null ? " Message: " + message.trim() : "");
+        var created = leads.create(new LeadWriter.LeadDraft(customerId, "website_owner", null, "property_owner",
+                summary.length() > 2000 ? summary.substring(0, 2000) : summary, null, 15, idempotencyKey, null, null,
+                "Property owner submission received from website", "public", ipHash));
+        return new EnquiryResult(created.reference(), true);
+    }
+
     private String rateLimit(String clientIp) {
         String ipHash = Hashing.sha256Hex(clientIp == null ? "unknown" : clientIp);
         if (!limiter.tryAcquire("enquiry:" + ipHash, perIpPerHour, Duration.ofHours(1))) {

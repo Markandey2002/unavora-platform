@@ -45,7 +45,17 @@ async function call<T>(method: string, path: string, opts: { session?: string; b
   return { ok: false, status: res.status, code };
 }
 
+export type CustomerActivity = {
+  requests: { reference: string; type: string; createdAt: string; status: string; propertyTitle: string | null; propertySlug: string | null }[];
+  visits: { reference: string; scheduledAt: string | null; status: string; propertyTitle: string | null }[];
+};
+export type Favourite = { propertyId: string; title: string; slug: string; city: string; locality: string; savedAt: string };
+
 export const customerApi = {
+  activity: (session: string, lang: string) => call<CustomerActivity>("GET", `/internal/v1/customer/activity?lang=${lang === "hi" ? "hi" : "en"}`, { session }),
+  favourites: (session: string, lang: string) => call<Favourite[]>("GET", `/internal/v1/customer/favourites?lang=${lang === "hi" ? "hi" : "en"}`, { session }),
+  saveFavourite: (session: string, propertyId: string) => call<void>("PUT", `/internal/v1/customer/favourites/${encodeURIComponent(propertyId)}`, { session }),
+  removeFavourite: (session: string, propertyId: string) => call<void>("DELETE", `/internal/v1/customer/favourites/${encodeURIComponent(propertyId)}`, { session }),
   loginWithGoogle: (credential: string, language: string, clientIp?: string) =>
     call<LoginResult>("POST", "/internal/v1/customer-auth/google", {
       body: { credential, language }, headers: clientIp ? { "X-Forwarded-For": clientIp } : {},

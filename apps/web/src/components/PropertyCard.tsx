@@ -1,7 +1,10 @@
 import Link from "next/link";
-import { artKind, PropertyArt, seedOf } from "@/components/site/Art";
+import Image from "next/image";
+import { PhotoPending } from "@/components/site/PhotoPending";
+import { SampleBadge } from "@/components/site/SampleBadge";
 import { Icon } from "@/components/site/ui";
 import type { Dictionary } from "@/i18n/dictionaries";
+import { getExtraDictionary } from "@/i18n/extra";
 import type { SiteDictionary } from "@/i18n/site";
 import type { PropertySummary } from "@/lib/api";
 import { formatPrice } from "@/lib/api";
@@ -18,7 +21,8 @@ export function priceText(p: PropertySummary, t: Dictionary): string {
 
 /**
  * Listing card. The title is the card's single main link (the whole card is clickable through it); "View details" and
- * "Enquire" are secondary links above it. Images are labelled illustrations until approved photos exist.
+ * "Enquire" are secondary links above it. Only an approved photograph of THIS listing is shown; otherwise an honest
+ * "photographs awaiting approval" state (never a stock or shared image).
  */
 export function PropertyCard({ p, lang, t, s, headingLevel = "h3" }: {
   p: PropertySummary; lang: string; t: Dictionary; s: SiteDictionary; headingLevel?: "h2" | "h3";
@@ -27,21 +31,23 @@ export function PropertyCard({ p, lang, t, s, headingLevel = "h3" }: {
   const H = headingLevel;
   const area = areaText(p, s);
   const category = s.category[p.category ?? "residential"]?.title;
+  const x = getExtraDictionary(lang);
   return (
     <li className="card-lift group relative flex flex-col bg-white shadow-[var(--shadow-card)]">
-      <div className="zoom-on-hover relative aspect-[4/3] overflow-hidden bg-navy">
-        <PropertyArt kind={artKind(p.category, p.typeCode)} seed={seedOf(p.id)} label={`${s.card.illustration}: ${p.propertyType}`} />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-navy/70 to-transparent" />
-        {category && <span className="eyebrow absolute left-4 top-4 bg-ivory/95 px-2.5 py-1 !text-[0.65rem] text-navy">{category}</span>}
+      <div className="zoom-on-hover relative aspect-[4/3] overflow-hidden bg-sand">
+        {p.coverImage
+          ? <Image src={p.coverImage} alt={p.title} fill sizes="(min-width:1024px) 33vw, (min-width:640px) 50vw, 90vw" className="object-cover" />
+          : <PhotoPending label={x.photo.pending} compact />}
+        <div className="absolute left-4 top-4 flex flex-wrap gap-1.5">
+          {category && <span className="eyebrow bg-ivory/95 px-2.5 py-1 !text-[0.65rem] text-navy">{category}</span>}
+          {p.sample && <SampleBadge label={x.sample.badge} note={x.sample.note} />}
+        </div>
         {p.availability === "under_offer" && (
           <span className="absolute right-4 top-4 bg-navy/85 px-2.5 py-1 text-[0.7rem] font-semibold text-gold">{s.card.underOffer}</span>
         )}
-        <span className="absolute bottom-3 right-4 text-[0.65rem] uppercase tracking-[0.18em] text-ivory/70">{s.card.illustration}</span>
-        <p className="font-display absolute bottom-3 left-4 text-2xl font-semibold text-ivory">
-          {priceText(p, t)}
-        </p>
       </div>
       <div className="flex flex-1 flex-col p-5">
+        <p className="font-display mb-2 text-2xl font-semibold text-navy">{priceText(p, t)}</p>
         <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.12em] text-muted [:lang(hi)_&]:tracking-normal">
           <Icon name="pin" className="size-4 text-gold-700" />{p.locality}, {cityLabel(p.city, lang)}
         </p>

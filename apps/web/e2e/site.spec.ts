@@ -7,9 +7,11 @@ test("home: official logo, hero, live figures, categories, featured listings, en
   await page.goto("/en");
   await expect(page).toHaveTitle(/UNAVORA ANANT INFRA/);
   await expect(page.locator("header img[alt*='UNAVORA ANANT INFRA']").first()).toBeVisible();
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Building better spaces. Creating better futures.");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Building Better Spaces. Creating Better Futures.");
   await expect(page.locator("h1")).toHaveCount(1);
-  await expect(page.getByRole("search", { name: "Find a property" })).toBeVisible();
+  if (isMobile()) await expect(page.getByRole("button", { name: "Open property finder" })).toBeVisible();
+  else await expect(page.getByRole("search", { name: "Find a property" })).toBeVisible();
+  await expect(page.getByText("Representative image").first()).toBeVisible();
   await expect(page.getByRole("heading", { name: "Browse by category" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Residential", exact: true }).last()).toBeVisible();
   await expect(page.getByRole("heading", { name: "Featured properties" })).toBeVisible();
@@ -23,10 +25,11 @@ test("home: official logo, hero, live figures, categories, featured listings, en
 
 test("hero search sends supported filters to the listing", async ({ page }) => {
   await page.goto("/en");
-  const search = page.getByRole("search", { name: "Find a property" });
+  if (isMobile()) await page.getByRole("button", { name: "Open property finder" }).click();
+  const search = page.getByRole("search", { name: "Find a property" }).filter({ visible: true });
   await search.getByLabel("City").selectOption("Lucknow");
   await search.getByLabel("Category").selectOption("residential");
-  await search.getByRole("button", { name: "Search" }).click();
+  await search.getByRole("button", { name: isMobile() ? "Show results" : "Search" }).click();
   await expect(page).toHaveURL(/\/en\/properties\?.*city=Lucknow.*category=residential/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Properties");
   await expect(page.getByRole("link", { name: "Remove filter: Lucknow" })).toBeVisible();
@@ -90,8 +93,8 @@ test("channel partner application creates a CRM reference", async ({ page }) => 
 
 test("projects, legal pages, 404 and SEO files", async ({ page, request }) => {
   await page.goto("/en/projects");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Projects");
-  await expect(page.getByText(/No projects have been published yet|Starting from/).first()).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("New launches");
+  await expect(page.getByText(/No new launches are published yet|Starting from/).first()).toBeVisible();
   await page.goto("/en/privacy");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Privacy policy");
   const missing = await page.goto("/en/properties/does-not-exist");
@@ -108,7 +111,8 @@ test("property detail: facts, illustration notice, enquiry panel and related lis
   await page.goto("/en/properties/sample-3bhk-apartment-sector-37-noida");
   await expect(page.getByRole("heading", { level: 1 })).toContainText("3 BHK apartment");
   await expect(page.getByText("Key details")).toBeVisible();
-  await expect(page.getByText(/The image is an illustration/).filter({ visible: true }).first()).toBeVisible();
+  // no approved photographs yet: an honest placeholder, never a stock or shared image
+  await expect(page.getByRole("img", { name: "Photographs awaiting approval" }).first()).toBeVisible();
   await expect(page.locator("script[type='application/ld+json']")).toHaveCount(1);
   await expect(page.getByRole("heading", { name: "Similar properties" })).toBeVisible();
   if (isMobile()) await expect(page.getByRole("link", { name: "Enquire now" }).last()).toBeVisible();

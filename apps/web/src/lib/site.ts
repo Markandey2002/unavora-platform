@@ -25,6 +25,11 @@ export function whatsappHref(e164: string, text?: string): string {
 
 /** City names come from the database in English; Hindi labels for the cities we serve (draft translations). */
 const cityHi: Record<string, string> = { Noida: "नोएडा", "Greater Noida": "ग्रेटर नोएडा", Lucknow: "लखनऊ", Prayagraj: "प्रयागराज" };
+/** URL slug for a city (same rule as the API: lowercase, non-alphanumerics -> hyphen). */
+export function citySlug(city: string): string {
+  return city.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+}
+
 export function cityLabel(city: string, lang: string): string {
   return lang === "hi" ? (cityHi[city] ?? city) : city;
 }
@@ -46,7 +51,8 @@ export function groupByCity(rows: LocationRow[]): CitySummary[] {
 /** Budget options in rupees (lakh / crore steps), used for the min/max price filters. */
 export const budgetSteps = [2_000_000, 3_000_000, 5_000_000, 7_500_000, 10_000_000, 15_000_000, 20_000_000, 30_000_000, 50_000_000];
 
-export type SearchFilters = { city?: string; category?: Category; type?: string; minPrice?: string; maxPrice?: string; bedrooms?: string; q?: string };
+export const sorts = ["newest", "price_asc", "price_desc", "featured"] as const;
+export type SearchFilters = { city?: string; category?: Category; type?: string; minPrice?: string; maxPrice?: string; bedrooms?: string; q?: string; sort?: string };
 
 /** Keeps only well-formed filter values from the query string, so nothing odd is forwarded to the API. */
 export function cleanFilters(sp: Record<string, string | undefined>, isCat: (v?: string) => v is Category): SearchFilters {
@@ -63,6 +69,7 @@ export function cleanFilters(sp: Record<string, string | undefined>, isCat: (v?:
     maxPrice,
     bedrooms: sp.bedrooms && /^[1-9]$/.test(sp.bedrooms) ? sp.bedrooms : undefined,
     q: sp.q?.trim() ? sp.q.trim().slice(0, 80) : undefined,
+    sort: sp.sort && (sorts as readonly string[]).includes(sp.sort) && sp.sort !== "newest" ? sp.sort : undefined,
   };
 }
 

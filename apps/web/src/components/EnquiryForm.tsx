@@ -16,9 +16,11 @@ const TYPES = ["general", "callback", "site_visit", "residential", "commercial",
  *  callback  - compact: name, mobile, consent
  *  full      - contact page: adds email, enquiry type and message
  */
-export function EnquiryForm({ propertyId, lang, t, f, variant = "property", title, enquiryType, message, id }: {
+export function EnquiryForm({ propertyId, lang, t, f, variant = "property", title, enquiryType, message, id, properties, propertyLabels }: {
   propertyId?: string; lang: string; t: Dictionary; f?: SiteDictionary["form"]; variant?: "property" | "callback" | "full";
   title?: string; enquiryType?: (typeof TYPES)[number]; message?: string; id?: string;
+  /** Full variant: optional list of published listings the visitor can pick (sent as propertyId). */
+  properties?: { id: string; title: string }[]; propertyLabels?: { label: string; none: string };
 }) {
   const [state, action, pending] = useActionState(enquire, initial);
   const [key] = useState(() => crypto.randomUUID()); // same key on retry => no duplicate lead
@@ -68,6 +70,14 @@ export function EnquiryForm({ propertyId, lang, t, f, variant = "property", titl
         <label className={label}>{f.type}
           <select name="enquiryType" defaultValue="general" className={field}>
             {TYPES.map((v) => <option key={v} value={v}>{f.types[v]}</option>)}
+          </select>
+        </label>
+      )}
+      {variant === "full" && properties && properties.length > 0 && propertyLabels && (
+        <label className={label}>{propertyLabels.label}
+          <select name="propertyId" defaultValue="" className={field}>
+            <option value="">{propertyLabels.none}</option>
+            {properties.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
           </select>
         </label>
       )}

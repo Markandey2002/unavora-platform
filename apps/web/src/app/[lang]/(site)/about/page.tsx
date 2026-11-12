@@ -4,12 +4,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PropertyArt, seedOf } from "@/components/site/Art";
 import { PageHero } from "@/components/site/PageHero";
-import { Arrow, btn, Eyebrow, Icon, SectionHeading } from "@/components/site/ui";
+import { Arrow, btn, Eyebrow, Icon, RepresentativeTag, SectionHeading } from "@/components/site/ui";
 import { isLang } from "@/i18n/dictionaries";
 import { getSiteDictionary } from "@/i18n/site";
 import { getLocations } from "@/lib/api";
 import { brand, photos } from "@/lib/assets";
-import { pageMeta } from "@/lib/seo";
+import { seoMeta } from "@/lib/seo";
 import { cityLabel, groupByCity } from "@/lib/site";
 
 type Props = { params: Promise<{ lang: string }> };
@@ -18,7 +18,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { lang } = await params;
   if (!isLang(lang)) return {};
   const s = getSiteDictionary(lang);
-  return pageMeta(lang, "/about", s.nav.about, s.about.p1);
+  return seoMeta(lang, "/about", s.nav.about, s.about.p1);
 }
 
 export default async function AboutPage({ params }: Props) {
@@ -45,7 +45,9 @@ export default async function AboutPage({ params }: Props) {
           ) : (
             <div className="absolute inset-0"><PropertyArt kind="villa" seed={seedOf("about-page")} label={`${s.card.illustration}: ${s.about.title}`} /></div>
           )}
-          <span className="absolute bottom-3 left-4 text-[0.65rem] uppercase tracking-[0.2em] text-ivory/60">{s.card.illustration}</span>
+          {photos.about
+            ? <RepresentativeTag label={s.photo.representative} className="bottom-3 left-3" />
+            : <span className="absolute bottom-3 left-4 text-[0.65rem] uppercase tracking-[0.2em] text-ivory/60">{s.card.illustration}</span>}
         </div>
       </section>
 

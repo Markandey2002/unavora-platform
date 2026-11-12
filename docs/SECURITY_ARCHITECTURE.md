@@ -25,7 +25,8 @@ Internet → CloudFront/WAF → ALB → Next.js (web) and Spring Boot (api, port
 | Headers | nosniff, frame deny, referrer policy (API); web adds Permissions-Policy | Implemented; CSP pending |
 | MFA | Director MFA mandatory, enforced by the API (`roles.requires_mfa` + `amr` contains `otp`) at sign-in and on every request, for website sessions and bearer tokens. Local: Keycloak TOTP (synthetic secret); staging: Cognito TOTP | PASS locally (StaffSessionIT, Playwright with real Keycloak TOTP) |
 | Payments | Webhook signature check, idempotent events, no card data stored | Schema only |
-| Files | Private bucket, short-lived signed URLs, malware scan on upload | Designed |
+| Files | Target: private bucket, short-lived signed URLs, malware scan on upload. **Now (owner submissions only):** API-side checks (magic bytes JPEG/PNG/WebP, 5 MB/file, max 5, 27 MB request), random storage names outside the web root, SHA-256 recorded, `not_scanned` status shown to staff, files served only to staff allowed to see the submission (via BFF, `Cache-Control: no-store`, `nosniff`), stored files removed if the submission fails | Partially implemented: `MalwareScanner` port (clamd INSTREAM client, mock local/test only, none = cannot approve); infected uploads refused; only clean + approved files copied to the public store; local disk stores. **Real scanner and S3 not yet configured** |
+| Public content | CMS text is stored and rendered as plain text (React escaping, no HTML); YouTube ids validated (11 chars); social links must be https; only `verified` company facts and consented, published testimonials are public; staff content changes audited | Implemented, tested |
 | Backups/DR | Aurora PITR, restore drill | Designed |
 
 ## Local-dev exceptions (never carry to staging/production)
@@ -36,4 +37,4 @@ Also local-only: mock Google sign-in and mock WhatsApp OTP (`mock` modes, `/inte
 ## Before staging
 Trust only CloudFront/ALB-set `X-Forwarded-For` hops (configure trusted proxies); move `/internal/**` to the management port or keep ALB no-route + SG; rotate the service credential via Secrets Manager.
 
-CSP with nonces; salted IP hash; RLS evaluation; dependency/vulnerability scan in CI; secrets in Secrets Manager; pen-test checklist; rate limits at WAF; DSR (export/erasure) workflow.
+Move owner uploads to a private S3 bucket with malware scanning (block or quarantine until clean); CSP with nonces; salted IP hash; RLS evaluation; dependency/vulnerability scan in CI; secrets in Secrets Manager; pen-test checklist; rate limits at WAF; DSR (export/erasure) workflow.

@@ -21,13 +21,13 @@ import org.springframework.web.bind.annotation.RestController;
 class PublicCompanyController {
     /** Settings the site may display once verified. Anything else in site_settings stays internal. */
     static final Set<String> PUBLIC_KEYS = Set.of("company.display_name", "company.tagline", "company.legal_name",
-            "company.phone", "company.whatsapp", "company.email", "company.cin", "company.rera_number");
+            "company.phone", "company.whatsapp", "company.email", "company.cin", "company.rera_number", "company.hours");
 
     private final JdbcClient jdbc;
 
     PublicCompanyController(JdbcClient jdbc) { this.jdbc = jdbc; }
 
-    record Office(String kind, String city, String locality, String address, String pinCode, String phone) {}
+    record Office(String kind, String city, String locality, String address, String pinCode, String phone, String hours, String directionsUrl) {}
 
     record CompanyInfo(Map<String, String> settings, Map<String, String> social, List<Office> offices) {}
 
@@ -44,10 +44,11 @@ class PublicCompanyController {
                     }
                 });
         List<Office> offices = jdbc.sql("""
-                SELECT kind, city, locality, full_address, pin_code, phone FROM company_offices
+                SELECT kind, city, locality, full_address, pin_code, phone, hours, directions_url FROM company_offices
                 WHERE verified ORDER BY sort_order, city""")
                 .query((rs, n) -> new Office(rs.getString("kind"), rs.getString("city"), rs.getString("locality"),
-                        rs.getString("full_address"), rs.getString("pin_code"), rs.getString("phone"))).list();
+                        rs.getString("full_address"), rs.getString("pin_code"), rs.getString("phone"), rs.getString("hours"),
+                        rs.getString("directions_url"))).list();
         return ResponseEntity.ok().cacheControl(CacheControl.maxAge(Duration.ofSeconds(300)).cachePublic())
                 .body(new CompanyInfo(settings, social, offices));
     }

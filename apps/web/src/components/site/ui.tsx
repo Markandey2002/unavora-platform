@@ -78,3 +78,12 @@ export function Icon({ name, className = "size-5" }: { name: "pin" | "bed" | "ba
 export function CtaLink({ href, variant = "gold", children, ...rest }: { href: string; variant?: keyof typeof btn; children: ReactNode } & Omit<ComponentProps<typeof Link>, "href" | "className">) {
   return <Link href={href} className={btn[variant]} {...rest}>{children}</Link>;
 }
+
+/** Caption for licensed stock photography: makes clear the image is not a UNAVORA listing or project. */
+export function RepresentativeTag({ label, className = "" }: { label: string; className?: string }) {
+  return (
+    <span className={`pointer-events-none absolute bg-navy/55 px-2 py-0.5 text-[0.62rem] font-medium uppercase tracking-[0.16em] text-ivory/90 backdrop-blur-sm [:lang(hi)_&]:tracking-normal ${className}`}>
+      {label}
+    </span>
+  );
+}

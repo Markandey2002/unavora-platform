@@ -11,6 +11,13 @@ spring:
     out-of-order: true
   security.oauth2.resourceserver.jwt.issuer-uri: ${OIDC_ISSUER_URI:http://localhost:8180/realms/unavora-dev}
 unavora:
+  files:
+    scanner: mock                                             # LOCAL ONLY: flags the EICAR test string; refused in other profiles
+  media:
+    serve-local: true                                         # LOCAL ONLY: API serves approved public media (prod: CDN/bucket)
+    public-base-url: http://localhost:8080/api/v1/public/media
+  public:
+    include-sample-content: true                                # LOCAL/TEST ONLY: show [SAMPLE] records (SyntheticDataGuard)
   cors-allowed-origins: http://localhost:3000
   rate-limit.staff-signin-per-ip-per-10min: 200   # LOCAL: repeated browser test runs from one machine
   rate-limit.enquiry-per-ip-per-hour: 200          # LOCAL: browser tests submit many public forms from one IP (default 10 elsewhere)

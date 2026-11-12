@@ -26,3 +26,38 @@ Sources read: *Website Blueprint (Updated)* PDF, *Cursor master prompt* PDF, sup
 | Hindi translations | DRAFT, needs native review |
 | Fonts | System font stack (Noto Sans Devanagari fallback); brand fonts not specified |
 | Privacy policy / terms | MISSING |
+
+## Representative (licensed stock) photographs
+
+Approved by the owner on 2026-11-09 ("use clearly labelled representative stock imagery"; download list approved).
+Licence: Unsplash License (free for commercial use, no permission needed, credit appreciated but not required;
+Unsplash+ images excluded). Stored in `apps/web/public/images/representative/`, registered in
+`apps/web/src/lib/assets.ts` as `kind: "licensed-stock"`. Every use carries the caption "Representative image";
+none is used on a listing or project page, and none depicts a UNAVORA property.
+
+| File | Used for | Source | Photographer |
+|---|---|---|---|
+| hero.jpg (2400×1347) | homepage hero | unsplash.com/photos/ANDcLjlFL9Q | Tabreez |
+| residential.jpg (1600×988) | Residential category card | unsplash.com/photos/3I8Jv3-TNro | Alexandre Lallemand |
+| commercial.jpg (1600×1049) | Commercial category card | unsplash.com/photos/gKMxcHB3U3E | Joakim Honkasalo |
+| plots.jpg (1600×1200) | Plots & land category card | unsplash.com/photos/nsevmnDU7FM | Iain |
+| offices.jpg (1600×1067) | Office spaces category card | unsplash.com/photos/PG8NyM_Mcts | Adolfo Félix |
+| about.jpg (1600×1067) | About section (home, About page) | unsplash.com/photos/WG68nmCtdqM | Timur Seyfelmlyukov |
+| partner.jpg (1600×1066) | Channel-partner banner | unsplash.com/photos/qFSQFSmfZkA | Mina Rad |
+
+Replace with company photography as it becomes available (same slots, `kind: "company"`, caption removed).
+Still illustrated (no photos may be used): property and project cards and detail galleries (need real listing photos).
+
+## Website content managed in the CRM (2026-11-09)
+
+| Content | Where it is managed | Public rule | Local sample data |
+|---|---|---|---|
+| Insights (articles, videos) | CRM → Website content → Insights (`cms.manage`) | published only; Hindi optional; videos are YouTube ids, click-to-load | one `[SAMPLE]` article (en/hi) in `infra/local/manual-test-data.sql` |
+| Testimonials | CRM → Website content → Testimonials (`cms.manage`) | published **and** display consent recorded (DB constraint) | **none** (no invented reviews) |
+| Featured listings | CRM → Website content → Featured listings (`property.publish`) | only published, available listings | one sample listing featured |
+| City introductions | CRM → Website content → City introductions (`cms.manage`) | published; city page exists only while the city has public listings | `[SAMPLE]` Lucknow intro |
+| Company facts and offices | CRM → Website content → Company facts (`settings.manage`) | only values marked verified | unchanged: nothing verified yet |
+| Owner submission photos | uploaded by owners on "List your property" | **never public**; staff only | created by tests only |
+
+Not managed yet (code changes needed): homepage banners and hero text, category tiles, SEO title/description
+overrides, partner/developer logos, careers, media gallery for listings (needs the public media store).

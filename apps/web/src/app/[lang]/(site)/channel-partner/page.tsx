@@ -6,7 +6,7 @@ import { Icon } from "@/components/site/ui";
 import { getDictionary, isLang } from "@/i18n/dictionaries";
 import { getSiteDictionary } from "@/i18n/site";
 import { getLocations } from "@/lib/api";
-import { pageMeta } from "@/lib/seo";
+import { seoMeta } from "@/lib/seo";
 
 type Props = { params: Promise<{ lang: string }> };
 
@@ -14,7 +14,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { lang } = await params;
   if (!isLang(lang)) return {};
   const s = getSiteDictionary(lang);
-  return pageMeta(lang, "/channel-partner", s.partner.pageTitle, s.partner.sub);
+  return seoMeta(lang, "/channel-partner", s.partner.pageTitle, s.partner.sub);
 }
 
 /** Channel-partner registration -> channel_partners (status applied) + CRM lead (POST /api/v1/public/channel-partners). */

@@ -265,6 +265,45 @@ FROM (VALUES
 ) AS v(lead, ch, dir, txt, ago)
 JOIN leads l ON l.id = ('40000000-0000-0000-0001-0000000000' || v.lead)::uuid;
 
+-- ---------- 8. website content samples (LOCAL ONLY, [SAMPLE]): one Insight article, a featured listing, a city intro ----------
+-- No sample testimonials (reviews are never fabricated) and no sample videos (no invented YouTube ids).
+DELETE FROM articles WHERE id = '80000000-0000-0000-0001-000000000001';
+INSERT INTO articles (id, kind, category, author_name, status, published_at)
+VALUES ('80000000-0000-0000-0001-000000000001', 'article', 'guide', 'UNAVORA team [SAMPLE]', 'published', now() - interval '2 days');
+INSERT INTO article_translations (article_id, language, title, slug, excerpt, body) VALUES
+ ('80000000-0000-0000-0001-000000000001', 'en', '[SAMPLE] Five questions to ask before a site visit', 'sample-five-questions-before-a-site-visit',
+  'Synthetic article for local testing of the Insights pages.',
+  'This is a synthetic article for local testing only.
+
+## Before you go
+- Which documents can the seller show?
+- What is included in the price?
+- When is possession expected?
+
+Ask our team any time; every enquiry gets a reference number.'),
+ ('80000000-0000-0000-0001-000000000001', 'hi', '[नमूना] साइट विज़िट से पहले पूछने योग्य पाँच सवाल', 'namuna-site-visit-se-pahle-paanch-sawal',
+  'स्थानीय परीक्षण के लिए कृत्रिम लेख।', 'यह केवल स्थानीय परीक्षण के लिए कृत्रिम लेख है।');
+UPDATE properties SET featured_at = now() WHERE id = '20000000-0000-0000-0001-000000000002';
+DELETE FROM cms_pages WHERE page_key = 'location-lucknow';
+WITH p AS (INSERT INTO cms_pages (page_key, status) VALUES ('location-lucknow', 'published') RETURNING id)
+INSERT INTO cms_page_translations (page_id, language, slug, title, body_json, review_status)
+SELECT id, 'en', 'location-lucknow', '[SAMPLE] Property in Lucknow',
+       '{"intro":"Synthetic introduction for local testing of city pages. Real copy is written and approved by the director."}', 'approved' FROM p;
+
+-- ---------- 9. mark every [SAMPLE] record as synthetic (V14 is_sample) ----------
+-- Production-like settings (unavora.public.include-sample-content=false) then never show them publicly.
+UPDATE properties p SET is_sample = true
+ WHERE NOT is_sample AND EXISTS (SELECT 1 FROM property_translations t WHERE t.property_id = p.id AND t.title LIKE '[SAMPLE]%');
+UPDATE projects p SET is_sample = true
+ WHERE NOT is_sample AND EXISTS (SELECT 1 FROM project_translations t WHERE t.project_id = p.id AND t.name LIKE '[SAMPLE]%');
+UPDATE articles a SET is_sample = true
+ WHERE NOT is_sample AND EXISTS (SELECT 1 FROM article_translations t WHERE t.article_id = a.id AND t.title LIKE '[SAMPLE]%');
+
+-- sample project: launch fields (V14) so the New Launches cards can be tested; it stays a flagged sample
+UPDATE projects SET category = 'residential', primary_type_id = (SELECT id FROM property_types WHERE code = 'apartment'),
+                    price_public = true, possession_public = (possession_date IS NOT NULL)
+ WHERE id = '70000000-0000-0000-0001-000000000001';
+
 COMMIT;
 
 \set QUIET off
