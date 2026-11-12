@@ -19,7 +19,8 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class MediaLibrary {
-    public static final Set<String> KINDS = Set.of("actual_photo", "render", "floor_plan");
+    /** Listing/project photos. "representative" = licensed stock, allowed until real photos exist (V17), always labelled. */
+    public static final Set<String> KINDS = Set.of("actual_photo", "render", "floor_plan", "representative");
     /** Site library: brand assets, licensed representative stock (always labelled), editorial covers, partner logos. */
     public static final Set<String> SITE_KINDS = Set.of("representative", "brand", "editorial", "logo", "actual_photo", "render");
     public static final UUID SITE_LIBRARY = UUID.fromString("00000000-0000-0000-0000-0000000000c0");
@@ -163,7 +164,7 @@ public class MediaLibrary {
         String kind = meta == null || meta.kind() == null || meta.kind().isBlank() ? (t == Target.SITE ? "" : "actual_photo") : meta.kind();
         if (!t.kinds.contains(kind)) {
             throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "validation_failed",
-                    t == Target.SITE ? "Choose what the image is (representative, brand, editorial, logo, photograph or render)" : "Kind must be photograph, render or floor plan");
+                    t == Target.SITE ? "Choose what the image is (representative, brand, editorial, logo, photograph or render)" : "Kind must be photograph, render, floor plan or representative");
         }
         return kind;
     }

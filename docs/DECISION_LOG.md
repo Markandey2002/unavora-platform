@@ -43,3 +43,4 @@
 | D-039 | 2026-11-10 | Listing workflow in the CRM uses the existing statuses/permissions; Create Draft Listing = one draft per approved submission, clean photos only, unapproved until reviewed | Implemented, tested |
 | D-040 | 2026-11-10 | Director CMS = `site_blocks` with separate draft/live JSON, submit (cms.manage) / publish (new `cms.publish`, director); associations need a recorded relationship and logo permission | Implemented, tested |
 | D-041 | 2026-11-10 | Public facts are gated individually: developer (verified), price (approved), possession (documented), RERA (verified), exact map (approved) else approximate locality area | Implemented, tested |
+| D-042 | 2026-11-12 | Owner: listings/projects may carry licensed **representative** photos until real ones are onboarded (V17 kind `representative`, licence required, always labelled "Representative image"; replace via the CRM) | Implemented locally |

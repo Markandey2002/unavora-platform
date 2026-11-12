@@ -61,3 +61,14 @@ Still illustrated (no photos may be used): property and project cards and detail
 
 Not managed yet (code changes needed): homepage banners and hero text, category tiles, SEO title/description
 overrides, partner/developer logos, careers, media gallery for listings (needs the public media store).
+
+## Representative listing photos (local sample data, 2026-11-12)
+
+Owner decision: until real photographs are onboarded, the local `[SAMPLE]` listings and project use licensed
+representative photos (Unsplash License, free commercial use). They are stored with kind `representative`, the photo id as
+credit and the licence recorded, approved through the normal pipeline, and always labelled "Representative image" on
+the website. Loader: `infra/local/representative-photos/load_representative_photos.py` (plan in `photos_plan.py`; 20
+photos, none reused across listings). Replace them with real photographs (kind "Photograph") in CRM -> Listings /
+Projects -> Photographs. Photographer names are not recorded yet (Unsplash photo id only): complete or replace before
+any public use.
+

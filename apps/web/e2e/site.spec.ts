@@ -111,8 +111,10 @@ test("property detail: facts, illustration notice, enquiry panel and related lis
   await page.goto("/en/properties/sample-3bhk-apartment-sector-37-noida");
   await expect(page.getByRole("heading", { level: 1 })).toContainText("3 BHK apartment");
   await expect(page.getByText("Key details")).toBeVisible();
-  // no approved photographs yet: an honest placeholder, never a stock or shared image
-  await expect(page.getByRole("img", { name: "Photographs awaiting approval" }).first()).toBeVisible();
+  // approved photos (each labelled when representative) or, without any, the honest placeholder
+  const gallery = page.getByRole("region", { name: "Photos" });
+  if (await gallery.count()) await expect(gallery.getByText("Representative image").filter({ visible: true }).first()).toBeVisible();
+  else await expect(page.getByRole("img", { name: "Photographs awaiting approval" }).first()).toBeVisible();
   await expect(page.locator("script[type='application/ld+json']")).toHaveCount(1);
   await expect(page.getByRole("heading", { name: "Similar properties" })).toBeVisible();
   if (isMobile()) await expect(page.getByRole("link", { name: "Enquire now" }).last()).toBeVisible();

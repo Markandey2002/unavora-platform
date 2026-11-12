@@ -4,7 +4,8 @@
 --     journeys), so they leave the public website. They stay in the CRM.
 --   * flags any record titled "[SAMPLE]" that is not yet flagged as is_sample (V14), so production-like settings
 --     hide it.
--- It never touches real records (no [SAMPLE] title, no e2e- slug), customers, leads or files.
+-- It never touches real records (no [SAMPLE] title, no e2e- slug), customers, leads or files. The only DELETE removes the
+-- test social link "unavora_e2e" written by the Playwright journeys.
 -- Run test-data-report.sql first and look at the numbers.
 --   docker cp infra/local/cleanup-test-data.sql unavora-postgres:/tmp/cleanup-test-data.sql
 --   docker exec unavora-postgres psql -U unavora_local -d unavora -v ON_ERROR_STOP=1 -f /tmp/cleanup-test-data.sql
@@ -29,6 +30,8 @@ UPDATE projects p SET status = 'archived'
  WHERE p.status = 'published' AND EXISTS (SELECT 1 FROM project_translations t WHERE t.project_id = p.id AND t.slug LIKE 'e2e-%');
 UPDATE properties p SET status = 'withdrawn'
  WHERE p.status = 'published' AND EXISTS (SELECT 1 FROM property_translations t WHERE t.property_id = p.id AND t.slug LIKE 'e2e-%');
+-- test social link written by the Playwright journeys (never a real account)
+DELETE FROM site_settings WHERE key LIKE 'social.%' AND value LIKE '%unavora_e2e%';
 UPDATE properties p SET is_sample = true
  WHERE NOT is_sample AND EXISTS (SELECT 1 FROM property_translations t WHERE t.property_id = p.id AND t.title LIKE '[SAMPLE]%');
 UPDATE projects p SET is_sample = true
