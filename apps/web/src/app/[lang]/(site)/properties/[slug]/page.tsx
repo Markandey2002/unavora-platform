@@ -1,18 +1,23 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { CustomerRequestForm } from "@/components/CustomerRequestForm";
 import { EnquiryForm } from "@/components/EnquiryForm";
 import { areaText, PropertyCard, priceText } from "@/components/PropertyCard";
-import { artKind, PropertyArt, seedOf } from "@/components/site/Art";
+import { PhotoPending } from "@/components/site/PhotoPending";
+import { SampleBadge } from "@/components/site/SampleBadge";
+import { MapEmbed } from "@/components/site/MapEmbed";
 import { btn, Eyebrow, Icon } from "@/components/site/ui";
 import { getDictionary, isLang } from "@/i18n/dictionaries";
 import { getSiteDictionary } from "@/i18n/site";
-import { getCompany, getProperty, searchProperties, type PropertySummary } from "@/lib/api";
-import { currentCustomer, customerAuthMode } from "@/lib/customer";
+import { findSlugs, getCompany, getProperty, searchProperties, type PropertySummary } from "@/lib/api";
+import { currentCustomer, customerApi, customerAuthMode, sessionFrom } from "@/lib/customer";
 import { jsonLd, pageMeta, siteUrl } from "@/lib/seo";
-import { cityLabel, contactFrom, whatsappHref } from "@/lib/site";
+import { cityLabel, citySlug, contactFrom, whatsappHref } from "@/lib/site";
+import { galleryLabels, getExtraDictionary } from "@/i18n/extra";
+import { FavouriteButton } from "@/components/site/FavouriteButton";
+import { FloorPlans, Gallery } from "@/components/site/Gallery";
 
 type Props = { params: Promise<{ lang: string; slug: string }> };
 
@@ -23,7 +28,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!d) return {};
   const p = d.summary;
   const desc = d.description ?? `${p.propertyType} · ${p.locality}, ${p.city}`;
-  return pageMeta(lang, `/properties/${slug}`, p.title, desc.slice(0, 300));
+  return pageMeta(lang, `/properties/${slug}`, p.title, desc.slice(0, 300), { paths: { en: d.slugs.en && `/properties/${d.slugs.en}`, hi: d.slugs.hi && `/properties/${d.slugs.hi}` } });
 }
 
 async function related(lang: string, p: PropertySummary): Promise<PropertySummary[]> {
@@ -40,11 +45,22 @@ export default async function PropertyPage({ params }: Props) {
   const { lang, slug } = await params;
   if (!isLang(lang)) notFound();
   const d = await getProperty(lang, slug);
-  if (!d) notFound();
+  if (!d) {
+    // A slug from the other language (language switch, shared link): go to this language's page, or to the language the
+    // item exists in. Unknown or unpublished items stay 404.
+    const other = await findSlugs("properties", slug);
+    if (!other) notFound();
+    redirect(other[lang] ? `/${lang}/properties/${other[lang]}` : other.en ? `/en/properties/${other.en}` : `/hi/properties/${other.hi}`);
+  }
   const t = getDictionary(lang);
   const s = getSiteDictionary(lang);
   const p = d.summary;
-  const [me, more, company] = await Promise.all([currentCustomer(await cookies()), related(lang, p), getCompany()]);
+  const store = await cookies();
+  const [me, more, company] = await Promise.all([currentCustomer(store), related(lang, p), getCompany()]);
+  const x = getExtraDictionary(lang);
+  const session = me ? sessionFrom(store) : undefined;
+  const favs = session ? await customerApi.favourites(session, lang) : null;
+  const saved = !!(favs?.ok && favs.data.some((f) => f.propertyId === p.id));
   const contact = contactFrom(company);
   const area = areaText(p, s);
   const facts: [string, string][] = [
@@ -80,21 +96,22 @@ export default async function PropertyPage({ params }: Props) {
       </div>
 
       <section className="mx-auto mt-5 max-w-7xl sm:px-6 lg:px-8">
-        <figure className="relative aspect-[4/3] overflow-hidden bg-navy sm:aspect-[16/7]">
-          <PropertyArt kind={artKind(p.category, p.typeCode)} seed={seedOf(p.id)} wide label={`${s.card.illustration}: ${p.propertyType}`} />
-          <div className="absolute inset-0 bg-gradient-to-t from-navy/60 via-transparent to-transparent" />
-          <figcaption className="absolute bottom-3 left-4 right-4 flex items-center gap-2 text-xs text-ivory/85 sm:bottom-5 sm:left-6">
-            <span className="bg-ivory/15 px-2 py-0.5 uppercase tracking-[0.16em] backdrop-blur">{s.card.illustration}</span>
-            <span className="hidden sm:inline">{s.detail.photoNote}</span>
-          </figcaption>
-        </figure>
-        <p className="mt-2 px-4 text-xs text-muted sm:hidden">{s.detail.photoNote}</p>
+        {d.images.length > 0 ? <Gallery images={d.images} title={p.title} labels={galleryLabels(x)} /> : (
+          <figure className="relative aspect-[4/3] overflow-hidden sm:aspect-[16/6]">
+            <PhotoPending label={x.photo.pending} note={x.photo.pendingNote} />
+          </figure>
+        )}
       </section>
 
       <div className="mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)] gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-14 lg:px-8 lg:py-14">
         <article>
           <p className="flex items-center gap-1.5 text-sm text-muted"><Icon name="pin" className="size-4 text-gold-700" />{p.locality}, {cityLabel(p.city, lang)}</p>
           <h1 className="font-display mt-2 text-4xl font-semibold leading-tight sm:text-5xl">{p.title}</h1>
+          {p.sample && <p className="mt-3"><SampleBadge label={x.sample.badge} note={x.sample.note} /> <span className="text-sm text-red-800">{x.sample.note}</span></p>}
+          <div className="mt-4">
+            {me ? <FavouriteButton propertyId={p.id} initial={saved} labels={x.favourite} />
+              : customerAuthMode() !== "disabled" && <Link href={`/${lang}/account`} className="inline-flex min-h-11 items-center text-sm underline underline-offset-4">{x.favourite.signIn}</Link>}
+          </div>
           <div className="mt-5 flex flex-wrap items-end gap-x-6 gap-y-2 border-y border-navy/10 py-5">
             <div>
               <p className="eyebrow text-muted">{s.detail.price}</p>
@@ -138,13 +155,18 @@ export default async function PropertyPage({ params }: Props) {
             </section>
           )}
 
+          {d.floorPlans.length > 0 && <FloorPlans plans={d.floorPlans} title={p.title} heading={x.gallery.floorPlans} labels={galleryLabels(x)} />}
+
           <section aria-labelledby="loc" className="mt-10 bg-sand/60 p-6">
             <h2 id="loc" className="font-display text-2xl font-semibold">{s.detail.location}</h2>
             <p className="mt-3 flex items-center gap-2 font-semibold"><Icon name="pin" className="size-5 text-gold-700" />{p.locality}, {cityLabel(p.city, lang)}</p>
-            <p className="mt-2 text-sm text-muted">{s.detail.locationNote}</p>
-            <Link href={`/${lang}/properties?city=${encodeURIComponent(p.city)}`} className={`${btn.text} mt-2`}>
-              {s.locations.view(cityLabel(p.city, lang))} →
-            </Link>
+            <p className="mt-2 text-sm text-muted">{d.map?.precision === "exact" ? x.map.exactNote : s.detail.locationNote}</p>
+            {d.map && <MapEmbed point={d.map} title={`${s.detail.location}: ${p.locality}, ${p.city}`} labels={{ show: x.map.show, approximate: x.map.approximate, exact: x.map.exact, attribution: x.map.attribution }} />}
+            <div className="mt-2 flex flex-wrap gap-x-6">
+              <Link href={`/${lang}/locations/${citySlug(p.city)}`} className={btn.text}>{s.locations.view(cityLabel(p.city, lang))} →</Link>
+              <a href={`https://www.openstreetmap.org/search?query=${encodeURIComponent(`${p.locality}, ${p.city}, India`)}`} target="_blank" rel="noopener noreferrer"
+                className={btn.text} title={x.map.note}>{x.map.view} ↗</a>
+            </div>
           </section>
         </article>
 

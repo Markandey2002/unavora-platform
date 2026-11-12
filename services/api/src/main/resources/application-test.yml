@@ -4,6 +4,12 @@ spring:
     locations: classpath:db/migration,classpath:db/seed-local
   security.oauth2.resourceserver.jwt.issuer-uri:
 unavora:
+  files:
+    scanner: mock
+  media:
+    serve-local: true
+  public:
+    include-sample-content: true                                # LOCAL/TEST ONLY: show [SAMPLE] records (SyntheticDataGuard)
   cors-allowed-origins: http://localhost:3000
   internal.service-token: test-internal-token
   customer-auth.google.mode: mock

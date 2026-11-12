@@ -241,3 +241,43 @@ remaining inputs: docs/UI_REVIEW.md. All rows executed locally against the produ
 | OpenAPI 0.5.0 | PASS | YAML valid, all schema references resolve (`redocly lint` NOT RUN) |
 | axe-core / Lighthouse | NOT RUN | no new dependency added; recommended before go-live |
 | Owner manual review in Chrome | NOT RUN | screenshots in docs/ui-review/after |
+
+
+## 14. Premium website experience, Phases A–D (2026-11-09, uncommitted)
+
+Owner brief "Premium Website Experience Redesign". Review, screenshots and limitations: docs/WEBSITE_UI_UX_REVIEW.md.
+Executed locally on the Windows PC against the production build (`next build` + `next start`), API jar with V13,
+PostgreSQL 17 and Keycloak.
+
+| Check | Result | Notes |
+|---|---|---|
+| `mvn verify` (API) | **PASS 94/94** (BUILD SUCCESS) | 6 ArchUnit + 88 integration. New `PublicSiteContentIT` 8: price/featured sorting and cursors, project status filter + developer, owner submission (multipart, magic-byte check, review → director decision, no listing created), favourites + customer activity, Insights publish/visibility, testimonials need consent (DB check), city intro, company facts |
+| Web `tsc` | PASS | 0 errors |
+| Vitest | **PASS 11/11** | |
+| `next build` | PASS | |
+| Playwright full suite (mobile + desktop) | **FAIL 1, then PASS 59/59 (3 skipped by design)** | new `site-journeys.spec.ts`: owner submission with photo → CRM review → director approval (private photo served `no-store`), employee refused on content screens, director publishes an Insight that appears on the website with share links and JSON-LD, customer saves a property and sees it in the account, price sort order, city page 200 / unknown city 404. First run found a real bug: article text typed in the CRM is submitted with CRLF line breaks and rendered as one paragraph; renderer now normalises line endings and parses line by line. CRM-only journeys skip on the mobile project |
+| Business-flow / customer-signup scripts | **PASS 19/19, 25/25** | |
+| Accessibility script, 12 pages incl. Insights, article, city, list-your-property, Hindi | **FAIL 1, then PASS 12/12 at 320 px and 1440 px** | "Sign in to save properties" link was a 17 px target; now 44 px |
+| SEO script | **FAIL 2, then PASS** (12 pages + sitemap + robots + 404) | article description fell back to a 20-character summary (now summary + opening text, max 160) and the Hindi Insights description was 45 characters (lengthened). Sitemap 42 URLs incl. city pages and Insights |
+| Horizontal overflow, 12 pages × 320/360/375/390/430/768/1024/1440 | **FAIL 3, then PASS 96/96** | Insights search button pushed off-screen below 386 px (input `min-w-0`); signed-in account page overflowed on phones with a long Gmail address (wrapping). Homepage flags were cards inside the swipe carousel (document width = viewport, verified) |
+| Lab Core Web Vitals (`scripts/perf-check.mjs`, 9 pages) | **PASS, all "good"** | mobile (390 px, 4× CPU slowdown, ~9 Mbps / 150 ms): LCP 676–1652 ms (home slowest), CLS 0.000, INP~ ≤ 64 ms. Desktop: LCP 144–444 ms, CLS 0.000, INP~ ≤ 32 ms. Lab only: real-user data needs production traffic. INP is approximated from one click + key press |
+| OpenAPI 0.6.0 | PASS | parsed with SnakeYAML: 63 paths, 15 schemas, all references resolve (`redocly lint` NOT RUN) |
+| axe-core / Lighthouse | NOT RUN | no new dependency added |
+| Malware scanning of owner uploads | NOT IMPLEMENTED | files stored privately and marked `not_scanned` (see SECURITY_ARCHITECTURE) |
+
+## 15. Final website completion (2026-11-10, uncommitted)
+
+Executed locally against the standalone server (`node .next/standalone/server.js`), API jar with V14–V16.
+
+| Check | Result | Notes |
+|---|---|---|
+| `mvn verify` | **PASS: 9 unit + 99 integration** | new: ProductionVisibilityIT 3, NewLaunchesIT 1, ListingWorkflowIT 3, SiteCmsIT 4, MalwareScannerTest 3 |
+| Web `tsc` / Vitest | PASS / 11/11 | |
+| Playwright (mobile + desktop) | **72 passed, 10 skipped by design** | new completion-journeys (A–G + CRM listing/project/photo/conversion/CMS/social) and keyboard specs |
+| Flow scripts | 19/19, 25/25 | |
+| axe-core | 24/24 (after 2 fixes) | |
+| Lighthouse | see WEBSITE_UI_UX_REVIEW round 2 | |
+| Overflow 9 widths | 126 checks, 0 real (1280 px fix) | |
+| Link crawl | 0 broken (fix: per-language slugs) | |
+| Bugs found and fixed by testing | server-action upload limit 1 MB (owner photos); CRLF article text; hreflang/slug 404s; 1280 px header overflow; sitemap caching a partial list during API outage; staff CMS changes not refreshing pages immediately; logo aspect ratio | |
+| Not run | real ClamAV, S3/CDN, real Google/WhatsApp, screen reader, field Web Vitals | |

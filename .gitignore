@@ -71,3 +71,6 @@ service-account*.json
 
 # Local tool settings
 .claude/settings.local.json
+
+# Private uploads (owner submission photos) written by the local API: never commit
+services/api/data/

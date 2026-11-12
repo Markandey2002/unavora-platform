@@ -100,6 +100,23 @@ async function call<T>(method: string, path: string, opts: { session?: string; b
   return { ok: false, status: res.status, code };
 }
 
+/** Multipart (file upload) call. The browser never talks to the API: the server action forwards the form. */
+async function callForm<T>(path: string, session: string, form: FormData): Promise<ApiResult<T>> {
+  const token = process.env.INTERNAL_SERVICE_TOKEN;
+  if (!token) throw new Error("INTERNAL_SERVICE_TOKEN is not configured");
+  let res: Response;
+  try {
+    res = await fetch(`${base}${path}`, { method: "POST", cache: "no-store", body: form,
+      headers: { "X-Internal-Service-Token": token, "X-Staff-Session": session } });
+  } catch {
+    return { ok: false, status: 503, code: "api_unreachable" };
+  }
+  if (res.ok) return { ok: true, status: res.status, data: await res.json() };
+  let code = "generic";
+  try { code = (await res.json()).code ?? code; } catch { /* ignore */ }
+  return { ok: false, status: res.status, code };
+}
+
 const qs = (p: Record<string, string | undefined>) => {
   const s = new URLSearchParams();
   for (const [k, v] of Object.entries(p)) if (v) s.set(k, v);
@@ -120,6 +137,71 @@ export const staffAuth = {
 };
 
 export const staffApi = {
+  // ---- Director CMS (blocks, image library, associations) ----
+  cmsBlocks: (s: string) => call<CmsBlockRow[]>("GET", "/internal/v1/staff/cms/blocks", { session: s }),
+  cmsBlock: (s: string, key: string) => call<CmsBlock>("GET", `/internal/v1/staff/cms/blocks/${encodeURIComponent(key)}`, { session: s }),
+  saveCmsBlock: (s: string, key: string, body: unknown) => call<CmsBlock>("PUT", `/internal/v1/staff/cms/blocks/${encodeURIComponent(key)}`, { session: s, body }),
+  cmsBlockAction: (s: string, key: string, action: "submit" | "publish" | "unpublish") =>
+    call<CmsBlock>("POST", `/internal/v1/staff/cms/blocks/${encodeURIComponent(key)}/${action}`, { session: s }),
+  cmsPreview: (s: string, lang: string) => call<import("./api").SiteBlocks>("GET", `/internal/v1/staff/cms/preview?lang=${lang === "hi" ? "hi" : "en"}`, { session: s }),
+  cmsLibrary: (s: string) => call<MediaItem[]>("GET", "/internal/v1/staff/cms/media", { session: s }),
+  cmsUpload: (s: string, form: FormData) => callForm<{ id: string }>("/internal/v1/staff/cms/media", s, form),
+  cmsUpdateImage: (s: string, id: string, body: MediaInput) => call<MediaItem[]>("PUT", `/internal/v1/staff/cms/media/${id}`, { session: s, body }),
+  cmsImageAction: (s: string, id: string, action: "approve" | "unapprove") => call<MediaItem[]>("POST", `/internal/v1/staff/cms/media/${id}/${action}`, { session: s }),
+  cmsDeleteImage: (s: string, id: string) => call<void>("DELETE", `/internal/v1/staff/cms/media/${id}`, { session: s }),
+  associations: (s: string) => call<AssociationRow[]>("GET", "/internal/v1/staff/cms/associations", { session: s }),
+  addAssociation: (s: string, body: AssociationInput) => call<AssociationRow[]>("POST", "/internal/v1/staff/cms/associations", { session: s, body }),
+  updateAssociation: (s: string, id: string, body: AssociationInput) => call<AssociationRow[]>("PUT", `/internal/v1/staff/cms/associations/${id}`, { session: s, body }),
+  associationAction: (s: string, id: string, action: "submit" | "publish" | "unpublish") =>
+    call<AssociationRow[]>("POST", `/internal/v1/staff/cms/associations/${id}/${action}`, { session: s }),
+  // ---- listings / projects / photos ----
+  listings: (s: string, p: { status?: string; q?: string }) => call<ListingRow[]>("GET", `/internal/v1/staff/properties${qs(p)}`, { session: s }),
+  listing: (s: string, id: string) => call<ListingDetail>("GET", `/internal/v1/staff/properties/${id}`, { session: s }),
+  listingOptions: (s: string) => call<ListingOptions>("GET", "/internal/v1/staff/properties/options", { session: s }),
+  createListing: (s: string, body: ListingInput) => call<{ id: string }>("POST", "/internal/v1/staff/properties", { session: s, body }),
+  updateListing: (s: string, id: string, body: ListingInput) => call<ListingDetail>("PUT", `/internal/v1/staff/properties/${id}`, { session: s, body }),
+  listingAction: (s: string, id: string, action: "submit" | "publish" | "unpublish" | "sold") => call<ListingDetail>("POST", `/internal/v1/staff/properties/${id}/${action}`, { session: s }),
+  reviewListing: (s: string, id: string, decision: string, note: string) => call<ListingDetail>("POST", `/internal/v1/staff/properties/${id}/review`, { session: s, body: { decision, note } }),
+  uploadMedia: (s: string, kind: MediaOwner, id: string, form: FormData) => callForm<{ id: string }>(`/internal/v1/staff/${kind}/${id}/media`, s, form),
+  updateMedia: (s: string, kind: MediaOwner, id: string, mid: string, body: MediaInput) => call<unknown>("PUT", `/internal/v1/staff/${kind}/${id}/media/${mid}`, { session: s, body }),
+  mediaAction: (s: string, kind: MediaOwner, id: string, mid: string, action: "approve" | "unapprove" | "primary") =>
+    call<unknown>("POST", `/internal/v1/staff/${kind}/${id}/media/${mid}/${action}`, { session: s }),
+  deleteMedia: (s: string, kind: MediaOwner, id: string, mid: string) => call<void>("DELETE", `/internal/v1/staff/${kind}/${id}/media/${mid}`, { session: s }),
+  projects: (s: string) => call<StaffProjectRow[]>("GET", "/internal/v1/staff/projects", { session: s }),
+  project: (s: string, id: string) => call<StaffProjectDetail>("GET", `/internal/v1/staff/projects/${id}`, { session: s }),
+  createProject: (s: string, body: ProjectInput) => call<{ id: string }>("POST", "/internal/v1/staff/projects", { session: s, body }),
+  updateProject: (s: string, id: string, body: ProjectInput) => call<StaffProjectDetail>("PUT", `/internal/v1/staff/projects/${id}`, { session: s, body }),
+  projectAction: (s: string, id: string, action: "publish" | "unpublish" | "archive") => call<StaffProjectDetail>("POST", `/internal/v1/staff/projects/${id}/${action}`, { session: s }),
+  localityPosition: (s: string, id: string, body: { latitude: number | null; longitude: number | null }) =>
+    call<void>("PUT", `/internal/v1/staff/localities/${id}/position`, { session: s, body }),
+  createListingFromSubmission: (s: string, id: string, body: { localityId: string; fileIds: string[] }) =>
+    call<{ propertyId: string; photos: number }>("POST", `/internal/v1/staff/submissions/${id}/create-listing`, { session: s, body }),
+  // ---- owner submissions ----
+  submissions: (session: string, status?: string) => call<SubmissionRow[]>("GET", `/internal/v1/staff/submissions${qs({ status })}`, { session }),
+  submission: (session: string, id: string) => call<SubmissionDetail>("GET", `/internal/v1/staff/submissions/${id}`, { session }),
+  reviewSubmission: (session: string, id: string, note: string) => call<SubmissionDetail>("POST", `/internal/v1/staff/submissions/${id}/review`, { session, body: { note } }),
+  decideSubmission: (session: string, id: string, decision: string, note: string) =>
+    call<SubmissionDetail>("POST", `/internal/v1/staff/submissions/${id}/decision`, { session, body: { decision, note } }),
+  // ---- content (director) ----
+  articles: (session: string) => call<ArticleRow[]>("GET", "/internal/v1/staff/content/articles", { session }),
+  article: (session: string, id: string) => call<ArticleFull>("GET", `/internal/v1/staff/content/articles/${id}`, { session }),
+  createArticle: (session: string, body: ArticleInput) => call<{ id: string }>("POST", "/internal/v1/staff/content/articles", { session, body }),
+  updateArticle: (session: string, id: string, body: ArticleInput) => call<ArticleFull>("PUT", `/internal/v1/staff/content/articles/${id}`, { session, body }),
+  articleStatus: (session: string, id: string, status: string) => call<ArticleFull>("POST", `/internal/v1/staff/content/articles/${id}/status`, { session, body: { status } }),
+  testimonials: (session: string) => call<TestimonialRow[]>("GET", "/internal/v1/staff/content/testimonials", { session }),
+  addTestimonial: (session: string, body: { displayName: string; rating: number | null; body: string; consentConfirmed: boolean; consentNote: string; publish: boolean }) =>
+    call<{ id: string }>("POST", "/internal/v1/staff/content/testimonials", { session, body }),
+  testimonialStatus: (session: string, id: string, status: string) => call<void>("POST", `/internal/v1/staff/content/testimonials/${id}/status`, { session, body: { status } }),
+  featured: (session: string) => call<{ id: string; title: string; city: string; featured: boolean }[]>("GET", "/internal/v1/staff/content/featured", { session }),
+  setFeatured: (session: string, id: string, on: boolean) => call<void>(on ? "PUT" : "DELETE", `/internal/v1/staff/content/featured/${id}`, { session }),
+  locations: (session: string) => call<LocationContentRow[]>("GET", "/internal/v1/staff/content/locations", { session }),
+  saveLocation: (session: string, slug: string, body: { en: { title: string; intro: string }; hi: { title: string; intro: string } | null; published: boolean }) =>
+    call<void>("PUT", `/internal/v1/staff/content/locations/${slug}`, { session, body }),
+  company: (session: string) => call<CompanyFacts>("GET", "/internal/v1/staff/content/company", { session }),
+  saveSetting: (session: string, key: string, value: string, verified: boolean) =>
+    call<void>("PUT", `/internal/v1/staff/content/company/settings/${encodeURIComponent(key)}`, { session, body: { value, verified } }),
+  saveOffice: (session: string, id: string, body: { address: string; pinCode: string; phone: string; verified: boolean; hours: string; directionsUrl: string }) =>
+    call<void>("PUT", `/internal/v1/staff/content/company/offices/${id}`, { session, body }),
   me: (s: string) => call<StaffMe>("GET", "/internal/v1/staff/me", { session: s }),
   leads: (s: string, p: { stage?: string; assignee?: string; cursor?: string }) =>
     call<LeadPage>("GET", `/internal/v1/staff/leads${qs({ ...p, limit: "20" })}`, { session: s }),
@@ -161,3 +243,84 @@ export function staffSessionFrom(store: { get(name: string): { value: string } |
 export function can(me: StaffMe, permission: string): boolean {
   return me.permissions.includes(permission);
 }
+
+export type SubmissionRow = {
+  id: string; status: string; leadReference: string; leadId: string; ownerName: string; city: string; locality: string | null;
+  propertyType: string; purpose: string; expectedPrice: number | null; area: number | null; areaUnit: string | null;
+  createdAt: string; assignedUserName: string | null; files: number;
+};
+export type SubmissionDetail = {
+  submission: SubmissionRow; message: string | null; phone: string | null; email: string | null; reviewNote: string | null;
+  reviewedBy: string | null; reviewedAt: string | null; decisionNote: string | null; decidedBy: string | null; decidedAt: string | null;
+  photos: { id: string; name: string; size: number; scanStatus: string }[]; canReview: boolean; canDecide: boolean;
+  propertyId: string | null; convertedAt: string | null;
+};
+export type ArticleTranslation = { title: string; slug: string; excerpt: string | null; body: string };
+export type ArticleInput = { kind: string; category: string; authorName: string; youtubeId: string | null; en: ArticleTranslation; hi: ArticleTranslation | null;
+  featured: boolean; coverMediaId: string | null; videoDescription: string | null };
+export type ArticleRow = { id: string; kind: string; category: string; status: string; titleEn: string; slugEn: string; hasHindi: boolean; authorName: string; publishedAt: string | null; updatedAt: string };
+export type ArticleFull = { id: string; kind: string; category: string; status: string; authorName: string; youtubeId: string | null; publishedAt: string | null; en: ArticleTranslation; hi: ArticleTranslation | null;
+  featured: boolean; coverMediaId: string | null; videoDescription: string | null };
+export type TestimonialRow = { id: string; displayName: string | null; rating: number | null; body: string | null; status: string; consentAt: string | null; consentNote: string | null; createdAt: string };
+export type LocationContentRow = { city: string; slug: string; listings: number; hasContent: boolean; published: boolean; en: { title: string; intro: string } | null; hi: { title: string; intro: string } | null };
+export type CompanyFacts = {
+  settings: { key: string; value: string | null; verified: boolean; publicKey: boolean }[];
+  offices: { id: string; kind: string; city: string; locality: string | null; address: string | null; pinCode: string | null; phone: string | null; verified: boolean; hours: string | null; directionsUrl: string | null }[];
+};
+
+export type MediaOwner = "properties" | "projects";
+export type MediaItem = {
+  id: string; kind: "actual_photo" | "render" | "floor_plan" | "representative" | "brand" | "editorial" | "logo"; captionEn: string | null; captionHi: string | null; altEn: string | null;
+  altHi: string | null; credit: string | null; licence: string | null; sortOrder: number; primary: boolean; public: boolean;
+  scanStatus: "not_scanned" | "clean" | "infected" | "scan_failed"; scanner: string | null; approvedAt: string | null; sizeBytes: number | null;
+};
+export type MediaInput = { kind: string; captionEn: string | null; captionHi: string | null; altEn: string | null; altHi: string | null; credit: string | null; licence: string | null; sortOrder: number | null };
+export type ListingRow = {
+  id: string; number: number; status: string; availability: string; sample: boolean; title: string | null; slug: string | null; city: string;
+  locality: string; type: string; price: number | null; priceOnRequest: boolean; owner: string | null; photos: number; approvedPhotos: number; updatedAt: string;
+};
+export type ListingTranslation = { title: string; slug: string; description: string | null };
+export type ListingInput = {
+  typeCode: string; localityId: string; purpose: string; priceAmount: number | null; priceOnRequest: boolean; priceNegotiable: boolean;
+  areaUnit: string; builtUpArea: number | null; carpetArea: number | null; plotArea: number | null; bedrooms: number | null; bathrooms: number | null;
+  parkingSpaces: number | null; furnishing: string | null; possessionStatus: string | null; possessionDate: string | null; floorNumber: number | null;
+  totalFloors: number | null; addressLine: string | null; latitude: number | null; longitude: number | null; hideExactLocation: boolean;
+  projectId: string | null; ownerUserId: string | null; amenityCodes: string[]; en: ListingTranslation; hi: ListingTranslation | null;
+};
+export type ListingDetail = Omit<ListingInput, "en" | "hi"> & {
+  id: string; number: number; status: string; availability: string; verificationStatus: string; rejectionReason: string | null; typeCode: string;
+  city: string; localityName: string; ownerName: string | null; submissionId: string | null; submissionRef: string | null; isSample: boolean;
+  publishedAt: string | null; en: ListingTranslation | null; hi: ListingTranslation | null; media: MediaItem[];
+  history: { from: string | null; to: string; note: string | null; at: string; by: string | null }[];
+  canEdit: boolean; canSubmit: boolean; canReview: boolean; canPublish: boolean; canUnpublish: boolean; canApproveMedia: boolean;
+};
+export type ListingOptions = {
+  types: { code: string; name: string; category: string }[]; localities: { id: string; city: string; name: string; latitude: number | null; longitude: number | null }[];
+  amenities: { code: string; name: string }[]; projects: { id: string; name: string }[]; staff: { id: string; name: string }[];
+};
+export type StaffProjectRow = { id: string; number: number; status: string; constructionStatus: string | null; sample: boolean; name: string | null; slug: string | null; city: string | null; locality: string | null; approvedPhotos: number; updatedAt: string };
+export type ProjectUnitInput = { label: string; bedrooms: number | null; areaValue: number | null; areaUnit: string | null; basePrice: number | null };
+export type ProjectText = { name: string; slug: string; description: string | null };
+export type ProjectInput = {
+  localityId: string | null; constructionStatus: string | null; possessionDate: string | null; possessionPublic: boolean; developerName: string | null;
+  developerVerified: boolean; category: string | null; primaryTypeCode: string | null; reraNumber: string | null; reraVerified: boolean; pricePublic: boolean;
+  units: ProjectUnitInput[]; en: ProjectText; hi: ProjectText | null;
+};
+export type StaffProjectDetail = Omit<ProjectInput, "en" | "hi" | "units"> & {
+  id: string; number: number; status: string; sample: boolean; publishedAt: string | null; units: ProjectUnitInput[]; media: MediaItem[]; canEdit: boolean;
+  en: ProjectText | null; hi: ProjectText | null;
+};
+
+export type CmsBlockRow = { key: string; status: string; live: boolean; updatedAt: string | null; publishedAt: string | null };
+export type CmsBlock = {
+  key: string; status: string; draft: Record<string, unknown> | null; published: Record<string, unknown> | null; updatedAt: string | null;
+  publishedAt: string | null; history: { action: string; at: string; by: string | null }[]; canPublish: boolean;
+};
+export type AssociationInput = {
+  name: string; relationship: string; websiteUrl: string | null; logoMediaId: string | null; relationshipConfirmed: boolean;
+  relationshipNote: string | null; logoPermission: boolean; logoPermissionNote: string | null; sortOrder: number | null;
+};
+export type AssociationRow = {
+  id: string; name: string; relationship: string; websiteUrl: string | null; logoMediaId: string | null; relationshipConfirmedAt: string | null;
+  relationshipNote: string | null; logoPermissionAt: string | null; logoPermissionNote: string | null; status: string; sortOrder: number;
+};

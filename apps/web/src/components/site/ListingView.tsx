@@ -5,6 +5,8 @@ import { getDictionary } from "@/i18n/dictionaries";
 import { getSiteDictionary } from "@/i18n/site";
 import { formatPrice, getLocations, isCategory, searchProperties, type Category } from "@/lib/api";
 import { cityLabel, cleanFilters, filterQuery, type SearchFilters } from "@/lib/site";
+import { getExtraDictionary } from "@/i18n/extra";
+import { AutoSubmitSelect, NoJsSubmit } from "./AutoSubmit";
 import { ListingFilters } from "./SearchPanel";
 import { btn, Eyebrow } from "./ui";
 
@@ -14,6 +16,7 @@ export async function ListingView({ lang, sp, lockCategory, title, sub, base }: 
 }) {
   const t = getDictionary(lang);
   const s = getSiteDictionary(lang);
+  const x = getExtraDictionary(lang);
   const f: SearchFilters = { ...cleanFilters(sp, isCategory), ...(lockCategory ? { category: lockCategory } : {}) };
   const cursor = sp.cursor && /^[A-Za-z0-9_-]{1,200}$/.test(sp.cursor) ? sp.cursor : undefined;
   const [page, locations] = await Promise.all([
@@ -57,8 +60,14 @@ export async function ListingView({ lang, sp, lockCategory, title, sub, base }: 
           <h2 id="results-heading" className="text-sm font-semibold text-navy" aria-live="polite">
             {s.listing.results(page.items.length, page.nextCursor != null)}
           </h2>
+          <form action={action} method="get" className="flex items-center gap-2">
+            {Object.entries(own).filter(([k, v]) => v && k !== "sort").map(([k, v]) => <input key={k} type="hidden" name={k} value={v as string} />)}
+            <AutoSubmitSelect name="sort" defaultValue={f.sort ?? "newest"} label={x.sort.label}
+              options={(["newest", "price_asc", "price_desc", "featured"] as const).map((k) => [k, x.sort[k]])} />
+            <NoJsSubmit>{x.sort.label}</NoJsSubmit>
+          </form>
           {chips.length > 0 && (
-            <ul className="flex flex-wrap items-center gap-2">
+            <ul className="flex w-full flex-wrap items-center gap-2">
               {chips.map((c) => (
                 <li key={c.key}>
                   <Link href={`${action}${filterQuery(own, c.key)}`} aria-label={s.listing.remove(c.label)}

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { isLang } from "@/i18n/dictionaries";
 import { getStaffDictionary } from "@/i18n/staff";
+import { getExtraDictionary } from "@/i18n/extra";
 import { can } from "@/lib/staff";
 import { requireStaff } from "@/lib/staffPage";
 
@@ -15,6 +16,7 @@ export default async function CrmLayout({ children, params }: { children: ReactN
   if (!isLang(lang)) notFound();
   const { me } = await requireStaff(lang);
   const t = getStaffDictionary(lang);
+  const x = getExtraDictionary(lang);
   const link = "min-h-11 content-center whitespace-nowrap rounded-lg px-3 text-sm font-medium hover:bg-navy/10";
   return (
     <div className="space-y-6">
@@ -26,6 +28,10 @@ export default async function CrmLayout({ children, params }: { children: ReactN
           <Link href={`/${lang}/staff/customers`} className={link}>{t.nav.customers}</Link>
           <Link href={`/${lang}/staff/follow-ups`} className={link}>{t.nav.followUps}</Link>
           {can(me, "report.director") && <Link href={`/${lang}/staff/overview`} className={link}>{t.nav.overview}</Link>}
+          {(can(me, "property.read_all") || can(me, "property.read_own")) && <Link href={`/${lang}/staff/listings`} className={link}>{x.crm.listings}</Link>}
+          {can(me, "property.read_all") && <Link href={`/${lang}/staff/projects`} className={link}>{x.crm.projects}</Link>}
+          <Link href={`/${lang}/staff/submissions`} className={link}>{x.staff.submissions}</Link>
+          {(can(me, "cms.manage") || can(me, "settings.manage") || can(me, "property.publish")) && <Link href={`/${lang}/staff/content`} className={link}>{x.staff.content}</Link>}
         </nav>
         <div className="flex flex-wrap items-center gap-3 text-sm">
           <span data-testid="staff-name" className="font-medium">{me.name}</span>

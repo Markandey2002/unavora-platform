@@ -47,11 +47,11 @@ export function MobileNav({ items, labels, extra }: {
   return (
     <>
       <button ref={button} type="button" onClick={() => setOpen(true)} aria-expanded={open} aria-controls="mobile-nav"
-        className="flex size-11 items-center justify-center text-navy lg:hidden" aria-label={labels.open}>
+        className="flex size-11 items-center justify-center text-navy xl:hidden" aria-label={labels.open}>
         <svg viewBox="0 0 20 20" className="size-6" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden><path d="M3 6h14M3 10h14M7 14h10" /></svg>
       </button>
       {open && (
-        <div className="fixed inset-0 z-50 lg:hidden">
+        <div className="fixed inset-0 z-50 xl:hidden">
           <button type="button" aria-label={labels.close} tabIndex={-1} onClick={() => setOpen(false)} className="absolute inset-0 bg-navy/50 backdrop-blur-sm" />
           <div ref={panel} id="mobile-nav" role="dialog" aria-modal="true" aria-label={labels.title}
             className="rise absolute inset-y-0 right-0 flex w-[min(22rem,100%)] flex-col overflow-y-auto bg-ivory shadow-2xl">
@@ -82,5 +82,19 @@ export function MobileNav({ items, labels, extra }: {
         </div>
       )}
     </>
+  );
+}
+
+/** Top-level desktop navigation link with an active state (aria-current + gold underline) for the current section. */
+export function NavLink({ href, lang, children, hasMenu }: { href: string; lang: string; children: React.ReactNode; hasMenu?: boolean }) {
+  const path = usePathname() ?? "";
+  const target = href.split("?")[0].split("#")[0];
+  const active = target === `/${lang}` ? path === target : path === target || path.startsWith(`${target}/`)
+    || (target.endsWith("/properties") && /\/(residential|commercial|plots)(\/|$)/.test(path));
+  return (
+    <Link href={href} aria-current={active ? "page" : undefined} aria-haspopup={hasMenu ? "true" : undefined}
+      className={`relative flex min-h-11 items-center gap-1 whitespace-nowrap px-2 text-[0.72rem] font-semibold uppercase tracking-[0.1em] transition-colors hover:text-navy [:lang(hi)_&]:text-sm [:lang(hi)_&]:tracking-normal 2xl:px-3 2xl:text-[0.78rem] after:absolute after:inset-x-2 after:bottom-1.5 after:h-0.5 after:origin-left after:bg-gold after:transition-transform 2xl:after:inset-x-3 ${active ? "text-navy after:scale-x-100" : "text-navy/75 after:scale-x-0 hover:after:scale-x-100"}`}>
+      {children}
+    </Link>
   );
 }

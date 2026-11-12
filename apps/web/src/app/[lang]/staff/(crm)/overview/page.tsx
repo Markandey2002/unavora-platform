@@ -69,7 +69,7 @@ export default async function OverviewPage({ params }: { params: Promise<{ lang:
         </section>
       </div>
 
-      <section className="mt-6 overflow-x-auto rounded-xl border border-slate/20 bg-white p-4">
+      <section tabIndex={0} className="mt-6 overflow-x-auto rounded-xl border border-slate/20 bg-white p-4">
         <h2 className="font-semibold">{t.workload}</h2>
         <table data-testid="workload" className="mt-3 w-full min-w-[40rem] text-left text-sm">
           <thead><tr className="text-slate">
@@ -90,7 +90,7 @@ export default async function OverviewPage({ params }: { params: Promise<{ lang:
         </table>
       </section>
 
-      <section className="mt-6 overflow-x-auto rounded-xl border border-slate/20 bg-white p-4">
+      <section tabIndex={0} className="mt-6 overflow-x-auto rounded-xl border border-slate/20 bg-white p-4">
         <h2 className="font-semibold">{t.pipelineByEmployee}</h2>
         <table data-testid="pipeline-by-employee" className="mt-3 w-full min-w-[30rem] text-left text-sm">
           <thead><tr className="text-slate"><th className="py-1 pr-3">{t.employee}</th><th className="pr-3">{t.stage}</th><th>#</th></tr></thead>

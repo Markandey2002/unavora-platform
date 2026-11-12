@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: UNAVORA API
-  version: 0.5.0
+  version: 0.7.0
   description: >-
     Implemented endpoints only. Behaviour is covered by MockMvc integration tests (services/api/src/test) and the local
     validation scripts; there are no automated OpenAPI contract tests yet. /internal/v1/** is called only by the
@@ -24,7 +24,8 @@ paths:
         - { name: bedrooms, in: query, schema: { type: integer } }
         - { name: q, in: query, schema: { type: string } }
         - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 20 } }
-        - { name: cursor, in: query, schema: { type: string } }
+        - { name: sort, in: query, description: "newest (default, keyset cursor) | price_asc | price_desc | featured (offset cursor 'o<n>'); price sorts put price-on-request last; unknown -> 400", schema: { type: string, enum: [newest, price_asc, price_desc, featured], default: newest } }
+        - { name: cursor, in: query, description: opaque; only valid for the same sort, otherwise 400, schema: { type: string } }
       responses:
         "200": { description: Page of properties, content: { application/json: { schema: { $ref: "#/components/schemas/PropertyPage" } } } }
         "400": { $ref: "#/components/responses/Problem" }
@@ -81,6 +82,7 @@ paths:
       summary: Published projects (new launches); RERA number only when verified
       parameters:
         - { name: lang, in: query, schema: { type: string, enum: [en, hi], default: en } }
+        - { name: status, in: query, description: construction status filter; unknown -> 400, schema: { type: string, enum: [planned, under_construction, ready_to_move, completed] } }
       responses:
         "200": { description: Projects, content: { application/json: { schema: { type: object, properties: { items: { type: array, items: { $ref: "#/components/schemas/ProjectSummary" } } } } } } }
         "400": { $ref: "#/components/responses/Problem" }
@@ -93,6 +95,86 @@ paths:
         - { name: lang, in: query, schema: { type: string, enum: [en, hi], default: en } }
       responses:
         "200": { description: Detail, content: { application/json: { schema: { $ref: "#/components/schemas/ProjectDetail" } } } }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/v1/public/property-submissions:
+    post:
+      security: []
+      summary: >-
+        Owner "list your property" submission. Creates/reuses the customer (category owner_seller), a CRM lead
+        (source website_owner, type property_owner, unassigned) and a property_submissions row with status submitted.
+        Never creates or publishes a listing: an employee reviews it and a director approves or rejects it.
+        Photos are stored privately (JPEG/PNG/WebP checked by magic bytes, max 5 MB each, max 5), marked not_scanned.
+      parameters:
+        - { name: Idempotency-Key, in: header, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [name, phone, city, propertyType, purpose, consent]
+              properties:
+                name: { type: string, maxLength: 200 }
+                phone: { type: string, maxLength: 20 }
+                email: { type: string, format: email }
+                city: { type: string, maxLength: 100 }
+                locality: { type: string, maxLength: 150 }
+                propertyType: { type: string, description: property type code (e.g. apartment, villa, plot) }
+                purpose: { type: string, enum: [sale, rent] }
+                expectedPrice: { type: number, minimum: 0 }
+                area: { type: number, minimum: 0 }
+                areaUnit: { type: string, enum: [sq_ft, sq_yd, sq_m, acre], description: required when area is given }
+                message: { type: string, maxLength: 2000 }
+                language: { type: string, enum: [en, hi] }
+                consent: { type: boolean, const: true, description: confirms the submitter is the owner or authorised by the owner }
+                photos: { type: array, maxItems: 5, items: { type: string, format: binary } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/EnquiryResponse" } } } }
+        "200": { description: Replay of an earlier idempotent request, content: { application/json: { schema: { $ref: "#/components/schemas/EnquiryResponse" } } } }
+        "413": { description: Request too large (over 5 MB per file / 27 MB total) }
+        "422": { $ref: "#/components/responses/Problem" }
+        "429": { $ref: "#/components/responses/Problem" }
+  /api/v1/public/articles:
+    get:
+      security: []
+      summary: Published Insights (articles and videos), newest first
+      parameters:
+        - { name: lang, in: query, schema: { type: string, enum: [en, hi], default: en } }
+        - { name: kind, in: query, schema: { type: string, enum: [article, video] } }
+        - { name: category, in: query, schema: { type: string, enum: [market, guide, education, investment, location, company] } }
+        - { name: q, in: query, schema: { type: string, maxLength: 80 } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 24, default: 12 } }
+        - { name: offset, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+      responses:
+        "200": { description: Page, content: { application/json: { schema: { type: object, properties: { items: { type: array, items: { $ref: "#/components/schemas/ArticleSummary" } }, total: { type: integer } } } } } }
+        "400": { $ref: "#/components/responses/Problem" }
+  /api/v1/public/articles/{slug}:
+    get:
+      security: []
+      summary: Published Insight with plain-text body (blank line = paragraph, "## " = subheading, "- " = list item) and up to 3 related
+      parameters:
+        - { name: slug, in: path, required: true, schema: { type: string } }
+        - { name: lang, in: query, schema: { type: string, enum: [en, hi], default: en } }
+      responses:
+        "200": { description: Detail, content: { application/json: { schema: { type: object, properties: { article: { $ref: "#/components/schemas/ArticleSummary" }, body: { type: string }, related: { type: array, items: { $ref: "#/components/schemas/ArticleSummary" } } } } } } }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/v1/public/testimonials:
+    get:
+      security: []
+      summary: Published testimonials only; the database rejects publishing without a recorded display consent
+      parameters:
+        - { name: lang, in: query, schema: { type: string, enum: [en, hi], default: en } }
+      responses:
+        "200": { description: List, content: { application/json: { schema: { type: array, items: { type: object, properties: { displayName: { type: string }, rating: { type: integer, minimum: 1, maximum: 5 }, body: { type: string }, propertyTitle: { type: [string, "null"] } } } } } } }
+  /api/v1/public/location-content/{citySlug}:
+    get:
+      security: []
+      summary: Published city introduction (CMS page location-<citySlug>); 404 when none is published
+      parameters:
+        - { name: citySlug, in: path, required: true, schema: { type: string, pattern: "^[a-z0-9-]+$" } }
+        - { name: lang, in: query, schema: { type: string, enum: [en, hi], default: en } }
+      responses:
+        "200": { description: Intro, content: { application/json: { schema: { type: object, properties: { title: { type: string }, intro: { type: string } } } } } }
         "404": { $ref: "#/components/responses/Problem" }
   /api/v1/public/company:
     get:
@@ -240,6 +322,45 @@ paths:
                 enquiryConsent: { type: boolean, const: true }
                 marketingConsent: { type: boolean }
       responses: { "201": { description: Created }, "200": { description: Idempotent replay }, "409": { description: WhatsApp not verified }, "422": { $ref: "#/components/responses/Problem" } }
+  /internal/v1/customer/activity:
+    get:
+      summary: BFF only. The signed-in customer's own enquiries (customer-facing status) and site visits; no internal notes
+      security: [{ service: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/CustomerSession" }
+        - { name: lang, in: query, schema: { type: string, enum: [en, hi], default: en } }
+      responses:
+        "200":
+          description: Activity
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  requests: { type: array, items: { type: object, properties: { reference: { type: string }, type: { type: string }, createdAt: { type: string, format: date-time }, status: { type: string, enum: [received, in_progress, visit_scheduled, visit_completed, completed, closed] }, propertyTitle: { type: [string, "null"] }, propertySlug: { type: [string, "null"] } } } }
+                  visits: { type: array, items: { type: object, properties: { reference: { type: string }, scheduledAt: { type: string, format: date-time }, status: { type: string }, propertyTitle: { type: [string, "null"] } } } }
+        "401": { description: Session missing or expired }
+  /internal/v1/customer/favourites:
+    get:
+      summary: BFF only. Saved properties that are still publicly visible
+      security: [{ service: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/CustomerSession" }
+        - { name: lang, in: query, schema: { type: string, enum: [en, hi], default: en } }
+      responses:
+        "200": { description: List, content: { application/json: { schema: { type: array, items: { type: object, properties: { propertyId: { type: string, format: uuid }, title: { type: string }, slug: { type: string }, city: { type: string }, locality: { type: string }, savedAt: { type: string, format: date-time } } } } } } }
+        "401": { description: Session missing or expired }
+  /internal/v1/customer/favourites/{propertyId}:
+    put:
+      summary: BFF only. Save a property (idempotent); not publicly visible -> 422
+      security: [{ service: [] }]
+      parameters: [{ $ref: "#/components/parameters/CustomerSession" }, { name: propertyId, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses: { "204": { description: Saved }, "401": { description: Session missing or expired }, "422": { $ref: "#/components/responses/Problem" } }
+    delete:
+      summary: BFF only. Remove a saved property (idempotent)
+      security: [{ service: [] }]
+      parameters: [{ $ref: "#/components/parameters/CustomerSession" }, { name: propertyId, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses: { "204": { description: Removed }, "401": { description: Session missing or expired } }
   /internal/v1/dev/mock-whatsapp/latest:
     get:
       summary: LOCAL/TEST ONLY (exists only when WhatsApp OTP mode is mock). Latest mock message for a number
@@ -398,6 +519,253 @@ paths:
       security: [{ bearer: [] }]
       parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
       responses: { "200": { description: OK }, "404": { description: Not yours }, "409": { description: already_completed } }
+  /api/v1/staff/submissions:
+    get:
+      summary: Owner property submissions. Directors (lead.read_all) see all; employees see those on leads assigned to them
+      security: [{ bearer: [] }]
+      parameters: [{ name: status, in: query, schema: { type: string, enum: [submitted, reviewed, approved, rejected] } }]
+      responses: { "200": { description: List }, "403": { description: Not permitted } }
+  /api/v1/staff/submissions/{id}:
+    get:
+      summary: Submission detail with owner contact, review/decision trail and private photo list
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses: { "200": { description: Detail }, "404": { description: Not found or not yours } }
+  /api/v1/staff/submissions/{id}/review:
+    post:
+      summary: Employee review (assigned employee or property.publish). Only from status submitted; note required; audited
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [note], properties: { note: { type: string, maxLength: 2000 } } } } } }
+      responses: { "200": { description: Reviewed (submission detail) }, "403": { description: Not the assigned employee }, "404": { description: Not found or not yours }, "409": { description: not_reviewable }, "422": { $ref: "#/components/responses/Problem" } }
+  /api/v1/staff/submissions/{id}/decision:
+    post:
+      summary: Director decision (property.publish). Only from status reviewed; approval does NOT create or publish a listing; audited
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [decision, note], properties: { decision: { type: string, enum: [approved, rejected] }, note: { type: string, maxLength: 2000 } } } } } }
+      responses: { "200": { description: Decided }, "403": { description: Not permitted }, "409": { description: not_reviewed }, "422": { $ref: "#/components/responses/Problem" } }
+  /api/v1/staff/submissions/{id}/files/{fileId}:
+    get:
+      summary: Private submission photo (same visibility as the submission); Cache-Control no-store, X-Content-Type-Options nosniff
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }, { name: fileId, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses: { "200": { description: Image, content: { image/jpeg: {}, image/png: {}, image/webp: {} } }, "404": { description: Not found or not yours } }
+  /api/v1/staff/content/articles:
+    get:
+      summary: All Insights in any status (cms.manage)
+      security: [{ bearer: [] }]
+      responses: { "200": { description: List }, "403": { description: Not permitted } }
+    post:
+      summary: Create a draft Insight (cms.manage). English required, Hindi optional; video requires an 11-character YouTube id; slug clash -> 409 slug_taken; audited
+      security: [{ bearer: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ArticleBody" } } } }
+      responses: { "201": { description: Created }, "409": { description: slug_taken }, "422": { $ref: "#/components/responses/Problem" } }
+  /api/v1/staff/content/articles/{id}:
+    get:
+      summary: One Insight with both translations (cms.manage)
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses: { "200": { description: Detail }, "404": { description: Not found } }
+    put:
+      summary: Update an Insight (cms.manage); audited
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ArticleBody" } } } }
+      responses: { "200": { description: Updated }, "404": { description: Not found }, "409": { description: slug_taken }, "422": { $ref: "#/components/responses/Problem" } }
+  /api/v1/staff/content/articles/{id}/status:
+    post:
+      summary: Publish, return to draft or archive (cms.manage); audited
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [status], properties: { status: { type: string, enum: [draft, published, archived] } } } } } }
+      responses: { "200": { description: OK }, "404": { description: Not found }, "422": { $ref: "#/components/responses/Problem" } }
+  /api/v1/staff/content/testimonials:
+    get:
+      summary: All testimonials with consent records (cms.manage)
+      security: [{ bearer: [] }]
+      responses: { "200": { description: List } }
+    post:
+      summary: Record a testimonial (cms.manage). consentConfirmed and consentNote are required to publish; audited
+      security: [{ bearer: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [displayName, rating, body, consentConfirmed], properties: { displayName: { type: string, maxLength: 80 }, rating: { type: integer, minimum: 1, maximum: 5 }, body: { type: string, maxLength: 2000 }, consentConfirmed: { type: boolean }, consentNote: { type: string, maxLength: 300, description: how and when display consent was obtained }, publish: { type: boolean } } } } } }
+      responses: { "201": { description: Created }, "422": { $ref: "#/components/responses/Problem" } }
+  /api/v1/staff/content/testimonials/{id}/status:
+    post:
+      summary: Publish, return to pending or reject a testimonial (cms.manage); publishing without consent -> 409 consent_required
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [status], properties: { status: { type: string, enum: [pending, published, rejected] } } } } } }
+      responses: { "204": { description: OK }, "404": { description: Not found }, "409": { description: consent_required }, "422": { $ref: "#/components/responses/Problem" } }
+  /api/v1/staff/content/featured:
+    get:
+      summary: Published listings with their featured flag (property.publish)
+      security: [{ bearer: [] }]
+      responses: { "200": { description: List } }
+  /api/v1/staff/content/featured/{propertyId}:
+    put:
+      summary: Feature a publicly visible listing on the homepage (property.publish); audited
+      security: [{ bearer: [] }]
+      parameters: [{ name: propertyId, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses: { "204": { description: Featured }, "404": { description: Not a published listing } }
+    delete:
+      summary: Stop featuring (property.publish); audited
+      security: [{ bearer: [] }]
+      parameters: [{ name: propertyId, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses: { "204": { description: Removed } }
+  /api/v1/staff/content/locations:
+    get:
+      summary: Cities with listings and their introduction text (cms.manage)
+      security: [{ bearer: [] }]
+      responses: { "200": { description: List } }
+  /api/v1/staff/content/locations/{citySlug}:
+    put:
+      summary: Save a city introduction in English (required) and Hindi (optional), published or not (cms.manage); audited
+      security: [{ bearer: [] }]
+      parameters: [{ name: citySlug, in: path, required: true, schema: { type: string, pattern: "^[a-z0-9-]+$" } }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [en, published], properties: { en: { $ref: "#/components/schemas/LocationText" }, hi: { $ref: "#/components/schemas/LocationText" }, published: { type: boolean } } } } } }
+      responses: { "204": { description: Saved }, "422": { $ref: "#/components/responses/Problem" } }
+  /api/v1/staff/content/company:
+    get:
+      summary: Company settings and offices with verified flags (settings.manage)
+      security: [{ bearer: [] }]
+      responses: { "200": { description: Settings and offices } }
+  /api/v1/staff/content/company/settings/{key}:
+    put:
+      summary: >-
+        Set a public company fact (settings.manage). Phone/WhatsApp (+E.164), email and https social URLs are validated; unknown key -> 422;
+        verified requires a value; only verified values appear on the website; audited
+      security: [{ bearer: [] }]
+      parameters: [{ name: key, in: path, required: true, schema: { type: string } }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { value: { type: [string, "null"], maxLength: 500 }, verified: { type: boolean } } } } } }
+      responses: { "204": { description: Saved }, "422": { $ref: "#/components/responses/Problem" } }
+  /api/v1/staff/content/company/offices/{id}:
+    put:
+      summary: Update an office address/PIN/phone and its verified flag (settings.manage); audited
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { address: { type: string, maxLength: 500 }, pinCode: { type: string, pattern: "^[0-9]{6}$" }, phone: { type: string }, verified: { type: boolean } } } } } }
+      responses: { "204": { description: Saved }, "404": { description: Not found }, "422": { $ref: "#/components/responses/Problem" } }
+  /api/v1/public/projects/slugs/{slug}:
+    get:
+      security: []
+      summary: "Language slugs of a published project found by any of its slugs"
+      responses: { "200": { description: OK } }
+  /api/v1/public/properties/slugs/{slug}:
+    get:
+      security: []
+      summary: "Language slugs of a public listing found by any of its slugs"
+      responses: { "200": { description: OK } }
+  /api/v1/public/articles/slugs/{slug}:
+    get:
+      security: []
+      summary: "Language slugs of a published Insight found by any of its slugs"
+      responses: { "200": { description: OK } }
+  /api/v1/public/site-blocks:
+    get:
+      security: []
+      summary: "Published CMS blocks for a language (hero, tiles, section order, careers, SEO overrides); images only when approved"
+      responses: { "200": { description: OK } }
+  /api/v1/public/associations:
+    get:
+      security: []
+      summary: "Published associations with a confirmed relationship; logo only with recorded permission"
+      responses: { "200": { description: OK } }
+  /api/v1/public/media/{key}:
+    get:
+      security: []
+      summary: "LOCAL/TEST ONLY (unavora.media.serve-local): approved public media; staging/production use the CDN"
+      responses: { "200": { description: OK } }
+  /api/v1/staff/properties:
+    get:
+      security: [{ bearer: [] }]
+      summary: "Listings visible to the caller (property.read_all or own); POST creates a draft (property.create)"
+      responses: { "200": { description: OK } }
+  /api/v1/staff/properties/{id}:
+    get:
+      security: [{ bearer: [] }]
+      summary: "Listing detail with translations, photos, history and allowed actions; PUT edits draft/rejected/withdrawn"
+      responses: { "200": { description: OK } }
+  /api/v1/staff/properties/{id}/submit:
+    post:
+      security: [{ bearer: [] }]
+      summary: "Draft -> pending_review (property.submit); 422 incomplete"
+      responses: { "200": { description: OK } }
+  /api/v1/staff/properties/{id}/review:
+    post:
+      security: [{ bearer: [] }]
+      summary: "Approve or reject with reason (property.review)"
+      responses: { "200": { description: OK } }
+  /api/v1/staff/properties/{id}/{action}:
+    post:
+      security: [{ bearer: [] }]
+      summary: "publish | unpublish | sold (property.publish)"
+      responses: { "200": { description: OK } }
+  /api/v1/staff/properties/{id}/media:
+    post:
+      security: [{ bearer: [] }]
+      summary: "Multipart photo upload: scanned (infected -> 422 file_rejected), stored privately, unapproved"
+      responses: { "200": { description: OK } }
+  /api/v1/staff/properties/{id}/media/{mid}/{action}:
+    post:
+      security: [{ bearer: [] }]
+      summary: "approve (clean scan + alt text; public copy) | unapprove | primary (property.publish)"
+      responses: { "200": { description: OK } }
+  /api/v1/staff/localities/{id}/position:
+    put:
+      security: [{ bearer: [] }]
+      summary: "Approximate locality map position (property.publish)"
+      responses: { "200": { description: OK } }
+  /api/v1/staff/submissions/{id}/create-listing:
+    post:
+      security: [{ bearer: [] }]
+      summary: "Director: one draft listing from an approved owner submission; only clean photos carried; 409 already_converted / not_approved / not_scanned"
+      responses: { "200": { description: OK } }
+  /api/v1/staff/projects:
+    get:
+      security: [{ bearer: [] }]
+      summary: "Projects (property.read_all); POST creates (property.publish)"
+      responses: { "200": { description: OK } }
+  /api/v1/staff/projects/{id}:
+    get:
+      security: [{ bearer: [] }]
+      summary: "Project detail; PUT edits incl. approval switches and units (property.publish)"
+      responses: { "200": { description: OK } }
+  /api/v1/staff/projects/{id}/{action}:
+    post:
+      security: [{ bearer: [] }]
+      summary: "publish | unpublish | archive (property.publish); publish needs locality, category, description"
+      responses: { "200": { description: OK } }
+  /api/v1/staff/cms/blocks:
+    get:
+      security: [{ bearer: [] }]
+      summary: "Editable website blocks with workflow state (cms.manage)"
+      responses: { "200": { description: OK } }
+  /api/v1/staff/cms/blocks/{key}:
+    put:
+      security: [{ bearer: [] }]
+      summary: "Save validated DRAFT content (cms.manage); GET returns draft, live and history"
+      responses: { "200": { description: OK } }
+  /api/v1/staff/cms/blocks/{key}/{action}:
+    post:
+      security: [{ bearer: [] }]
+      summary: "submit (cms.manage) | publish | unpublish (cms.publish)"
+      responses: { "200": { description: OK } }
+  /api/v1/staff/cms/preview:
+    get:
+      security: [{ bearer: [] }]
+      summary: "Blocks as they would render with drafts (staff only)"
+      responses: { "200": { description: OK } }
+  /api/v1/staff/cms/media:
+    get:
+      security: [{ bearer: [] }]
+      summary: "Site image library; POST multipart upload (scanned); approve requires cms.publish, alt text and a licence for stock/editorial"
+      responses: { "200": { description: OK } }
+  /api/v1/staff/cms/associations:
+    get:
+      security: [{ bearer: [] }]
+      summary: "Associations; POST/PUT edit; /{id}/{submit|publish|unpublish}; publish needs confirmed relationship (+ logo permission)"
+      responses: { "200": { description: OK } }
 components:
   parameters:
     StaffSession: { name: X-Staff-Session, in: header, required: true, schema: { type: string } }
@@ -454,6 +822,7 @@ components:
         startingPrice: { type: [number, "null"] }
         unitTypes: { type: integer }
         reraNumber: { type: [string, "null"], description: only when verified by the business }
+        developerName: { type: [string, "null"] }
         language: { type: string }
     ProjectDetail:
       type: object
@@ -487,6 +856,41 @@ components:
         language: { type: string }
         typeCode: { type: string, description: "stable type code, e.g. apartment" }
         category: { type: string, enum: [residential, commercial, land] }
+        featured: { type: boolean, description: chosen for the homepage by a director (property.publish) }
+        coverImage: { oneOf: [{ $ref: "#/components/schemas/Media" }, { type: "null" }], description: "first public, ready image; null when there is none or no public media base URL is configured" }
+    Media:
+      type: object
+      properties: { url: { type: string, format: uri }, alt: { type: [string, "null"] } }
+    ArticleSummary:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, enum: [article, video] }
+        category: { type: string, enum: [market, guide, education, investment, location, company] }
+        title: { type: string }
+        slug: { type: string }
+        excerpt: { type: [string, "null"] }
+        authorName: { type: string }
+        publishedAt: { type: string, format: date-time }
+        youtubeId: { type: [string, "null"] }
+        languages: { type: array, items: { type: string, enum: [en, hi] }, description: languages this Insight is published in }
+    ArticleTranslation:
+      type: object
+      required: [title, slug, body]
+      properties: { title: { type: string, maxLength: 200 }, slug: { type: string, pattern: "^[a-z0-9]+(-[a-z0-9]+)*$" }, excerpt: { type: string, maxLength: 400 }, body: { type: string, maxLength: 50000 } }
+    ArticleBody:
+      type: object
+      required: [kind, category, authorName, en]
+      properties:
+        kind: { type: string, enum: [article, video] }
+        category: { type: string, enum: [market, guide, education, investment, location, company] }
+        authorName: { type: string, maxLength: 120 }
+        youtubeId: { type: [string, "null"], pattern: "^[A-Za-z0-9_-]{11}$" }
+        en: { $ref: "#/components/schemas/ArticleTranslation" }
+        hi: { oneOf: [{ $ref: "#/components/schemas/ArticleTranslation" }, { type: "null" }] }
+    LocationText:
+      type: object
+      properties: { title: { type: string, maxLength: 200 }, intro: { type: string, maxLength: 5000 } }
     LocationList:
       type: object
       properties:
@@ -510,3 +914,5 @@ components:
         description: { type: [string, "null"] }
         amenities: { type: array, items: { type: string } }
         availableLanguages: { type: array, items: { type: string } }
+        images: { type: array, items: { $ref: "#/components/schemas/Media" }, description: public + ready images only; empty when no public media base URL is configured }
+        floorPlans: { type: array, items: { $ref: "#/components/schemas/Media" } }
