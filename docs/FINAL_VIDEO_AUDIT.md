@@ -61,3 +61,18 @@ Repository state at audit time:
    correct, but no social link rendering exists either.
 
 The plan to close these is in WEBSITE_COMPLETION_PLAN.md.
+
+## 4. Re-check 2026-11-12 (brief re-issued; nothing rebuilt)
+
+Verified against the running local stack (branch `website-completion`, PR #1, commits ba9071b, 644655a, 33fe153):
+
+| Video finding | Status now | Evidence |
+|---|---|---|
+| Sample listings/projects shown as real; figures from samples | Fixed: samples hidden outside local/test; red "Sample data" badge locally; figures strip removed | ProductionVisibilityIT; test-data report |
+| "E2E guide" articles public | Fixed: 0 public `e2e-` articles (17 archived) | public articles API; cleanup script |
+| New launches below categories | Fixed: first section under hero + search | homepage HTML order |
+| Repeated illustrations | Fixed: approved photos only; sample records carry licensed photos labelled "Representative image" (owner decision 2026-11-12) | V17; gallery/cards |
+| Footer without social/contacts | Partly: verified e-mail and phone now shown; **no social accounts supplied**, so no icons | company API |
+
+Open item found today: the local database keeps 18 unpublished listings and 9 archived projects created by the
+end-to-end tests (not public; visible in the CRM lists). Not deleted (local data, kept for inspection).

@@ -99,16 +99,16 @@ Home transfers ~0.66 MB on mobile (mostly the hero photo, served as responsive W
 ## 7. Missing business assets (needed before launch)
 
 - Real photographs of listings and projects (and the public media store to upload them).
-- Verified phone, WhatsApp, email, office addresses, legal details (RERA/CIN): the site shows none until marked verified in CRM → Company facts.
+- ~~Verified phone and email~~ **verified 2026-11-12** (+91 83183 77108, info@anantinfrarealty.com; CONTENT_READINESS_CHECKLIST). Still pending: WhatsApp number, office addresses, legal details (RERA/CIN); the site shows none of these until marked verified in CRM → Company facts.
 - Approved company copy (About, vision/mission) and real Insights articles.
 - Testimonials with written display consent.
 - Partner/developer logos with permission; social media URLs.
 
 ## 8. Not implemented (by design or pending decisions)
 
-- CMS for homepage banners/hero text, category tiles, SEO title/description overrides, partner logos, careers page.
-- Listing photo upload and public media storage (MinIO image blocked, D-016); galleries appear automatically once media exist.
-- Malware scanning of owner uploads (files are private and marked "not scanned"; required before staging, D-033).
+- ~~CMS for homepage banners/hero text, category tiles, SEO overrides, partner logos, careers page~~ done in round 2 (Director CMS).
+- ~~Listing photo upload~~ done in round 2 (local disk adapters); S3/CDN public media storage still needs infrastructure approval.
+- Malware scanning: pipeline and `clamd` adapter done in round 2; a real ClamAV / S3 scanning service is still required before staging.
 - Turning an approved owner submission into a listing (manual CRM step by decision).
 - Real Google sign-in and real WhatsApp: still mock only (not enabled without approval).
 - Map embed: an OpenStreetMap link to the area is shown; no embedded map or exact address (privacy).
@@ -181,3 +181,23 @@ be measured after launch.
 - Google and WhatsApp remain mock (CONTENT_READINESS_CHECKLIST §4).
 - Hindi wording is a draft; many records have English only (the language switch falls back to English).
 - Docker Desktop on this PC stopped twice under load during testing; results above were re-measured after restart.
+
+---
+
+# Round 3 — illustrative showcase and CMS replacement (2026-11-12, uncommitted)
+
+Source of truth for business facts: CONTENT_READINESS_CHECKLIST.md. Gap report and stage results: SHOWCASE_GAP_REPORT.md.
+Status by category: LAUNCH_READINESS_REPORT.md.
+
+| Area | Now |
+|---|---|
+| Content types | A real inventory (unchanged workflow) · B illustrative showcase (`showcase_items`, V18) · C local synthetic data (`is_sample`, now also on showcase items, V19) |
+| Homepage order | hero + finder → New launches → Featured properties (real listings only; hidden when none) → Explore property styles (illustrative) → categories → locations → … |
+| No real launch | "Discover upcoming opportunities": representative image + Register your interest (general project lead, no project id) |
+| Showcase cards | "Illustrative example" label (navy/gold), disclosure above the cards, category chips; no price/size/date/RERA/availability; never in property search or structured data |
+| CMS | CRM → Website content → Showcase: English/Hindi text, category, position, button, image from the approved library (replace any time), optional link to a published real property/project, desktop + phone preview, submit / publish / unpublish / archive, audit history |
+| CRM | showcase and register-interest enquiries: source "Website - showcase / register interest", campaign, preferred location, no property id; the lead page shows source, campaign and location |
+| Contact display | phone shown as "+91 83183 77108", links `tel:+918318377108`; mobile footer accordions stack tightly |
+
+Known limitation (observed 2026-11-12): after a CMS change, a public page pre-rendered at build time may keep its
+previous version until its 60-second refresh (seen on `/hi`; `/en` updated at once). The browser test allows that window.

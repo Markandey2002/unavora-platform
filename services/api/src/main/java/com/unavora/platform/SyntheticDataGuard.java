@@ -46,7 +46,8 @@ class SyntheticDataGuard implements ApplicationRunner {
         }
         Long samples = jdbc.sql("""
                 SELECT (SELECT count(*) FROM properties WHERE is_sample) + (SELECT count(*) FROM projects WHERE is_sample)
-                     + (SELECT count(*) FROM articles WHERE is_sample) + (SELECT count(*) FROM reviews WHERE is_sample)""")
+                     + (SELECT count(*) FROM articles WHERE is_sample) + (SELECT count(*) FROM reviews WHERE is_sample)
+                     + (SELECT count(*) FROM showcase_items WHERE is_sample)""")
                 .query(Long.class).single();
         if (samples != null && samples > 0) {
             throw new IllegalStateException(samples + " synthetic sample record(s) found in a non-local database; remove them before starting");

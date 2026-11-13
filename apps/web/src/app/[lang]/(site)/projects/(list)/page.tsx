@@ -135,7 +135,7 @@ export default async function NewLaunchesPage({ params, searchParams }: Props) {
               <Link href={`/${lang}/properties`} className={`${btn.outline} mt-8`}>{s.featured.viewAll}</Link>
             </div>
             <div className="bg-white p-6 shadow-[var(--shadow-card)] sm:p-8">
-              <EnquiryForm lang={lang} t={t} f={s.form} variant="callback" enquiryType="project" title={x.launch.emptyCta} id="project-interest" />
+              <EnquiryForm lang={lang} t={t} f={s.form} variant="callback" context="new_launches" title={x.launch.emptyCta} id="project-interest" locationLabel={x.showcase.location} />
             </div>
           </div>
         )}

@@ -16,11 +16,16 @@ const TYPES = ["general", "callback", "site_visit", "residential", "commercial",
  *  callback  - compact: name, mobile, consent
  *  full      - contact page: adds email, enquiry type and message
  */
-export function EnquiryForm({ propertyId, lang, t, f, variant = "property", title, enquiryType, message, id, properties, propertyLabels }: {
+export function EnquiryForm({ propertyId, lang, t, f, variant = "property", title, enquiryType, message, id, properties, propertyLabels,
+  showcaseId, context, locationLabel, about }: {
   propertyId?: string; lang: string; t: Dictionary; f?: SiteDictionary["form"]; variant?: "property" | "callback" | "full";
   title?: string; enquiryType?: (typeof TYPES)[number]; message?: string; id?: string;
   /** Full variant: optional list of published listings the visitor can pick (sent as propertyId). */
   properties?: { id: string; title: string }[]; propertyLabels?: { label: string; none: string };
+  /** Showcase / register-interest enquiries: a general CRM lead, never linked to a property. */
+  showcaseId?: string; context?: "new_launches"; locationLabel?: string;
+  /** Short line above the fields saying what the enquiry is about. */
+  about?: string;
 }) {
   const [state, action, pending] = useActionState(enquire, initial);
   const [key] = useState(() => crypto.randomUUID()); // same key on retry => no duplicate lead
@@ -46,7 +51,10 @@ export function EnquiryForm({ propertyId, lang, t, f, variant = "property", titl
   return (
     <form action={action} id={id} className="space-y-4" aria-describedby={error ? `${id ?? "enq"}-err` : undefined}>
       <h2 className="font-display text-2xl font-semibold text-navy">{title ?? t.enquireTitle}</h2>
+      {about && <p className="border-l-2 border-gold bg-sand/60 px-3 py-2 text-sm text-navy/85" data-testid="enquiry-about">{about}</p>}
       {propertyId && <input type="hidden" name="propertyId" value={propertyId} />}
+      {showcaseId && <input type="hidden" name="showcaseId" value={showcaseId} />}
+      {context && <input type="hidden" name="context" value={context} />}
       <input type="hidden" name="language" value={lang} />
       <input type="hidden" name="idempotencyKey" value={key} />
       {enquiryType && <input type="hidden" name="enquiryType" value={enquiryType} />}
@@ -61,19 +69,24 @@ export function EnquiryForm({ propertyId, lang, t, f, variant = "property", titl
           {f && variant === "full" && <span id="phone-hint" className="mt-1 block text-xs text-muted">{f.phoneHint}</span>}
         </label>
       </div>
+      {locationLabel && (
+        <label className={label}>{locationLabel}
+          <input name="preferredLocation" maxLength={200} autoComplete="address-level2" className={field} />
+        </label>
+      )}
       {!compact && (
         <label className={label}>{t.email}
           <input name="email" type="email" maxLength={254} autoComplete="email" className={field} />
         </label>
       )}
-      {variant === "full" && f && !enquiryType && (
+      {variant === "full" && f && !enquiryType && !showcaseId && (
         <label className={label}>{f.type}
           <select name="enquiryType" defaultValue="general" className={field}>
             {TYPES.map((v) => <option key={v} value={v}>{f.types[v]}</option>)}
           </select>
         </label>
       )}
-      {variant === "full" && properties && properties.length > 0 && propertyLabels && (
+      {variant === "full" && !showcaseId && properties && properties.length > 0 && propertyLabels && (
         <label className={label}>{propertyLabels.label}
           <select name="propertyId" defaultValue="" className={field}>
             <option value="">{propertyLabels.none}</option>
@@ -92,6 +105,7 @@ export function EnquiryForm({ propertyId, lang, t, f, variant = "property", titl
       </label>
       {!compact && (
         <label className="flex items-start gap-3 text-sm text-navy/85">
+          <input type="hidden" name="marketingAsked" value="1" />
           <input name="marketingConsent" type="checkbox" className="mt-0.5 size-5 shrink-0 accent-navy" />
           <span>{t.marketingConsent}</span>
         </label>

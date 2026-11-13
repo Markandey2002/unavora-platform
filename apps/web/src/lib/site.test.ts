@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { isCategory } from "./api";
-import { cityLabel, cleanFilters, contactFrom, filterQuery, groupByCity, whatsappHref } from "./site";
+import { cityLabel, cleanFilters, contactFrom, filterQuery, groupByCity, whatsappHref, formatPhone } from "./site";
 
 describe("contactFrom: only verified, well-formed channels are shown", () => {
   it("returns nothing when the API returns no verified contact", () => {
@@ -59,5 +59,25 @@ describe("locations", () => {
     expect(cityLabel("Prayagraj", "hi")).toBe("प्रयागराज");
     expect(cityLabel("Prayagraj", "en")).toBe("Prayagraj");
     expect(cityLabel("Varanasi", "hi")).toBe("Varanasi");
+  });
+});
+
+describe("formatPhone: readable display, E.164 kept for links", () => {
+  it("groups Indian mobile numbers", () => expect(formatPhone("+918318377108")).toBe("+91 83183 77108"));
+  it("leaves other numbers unchanged", () => {
+    expect(formatPhone("+441234567890")).toBe("+441234567890");
+    expect(formatPhone("+91123")).toBe("+91123");
+  });
+});
+
+describe("withNewSections: a saved homepage order keeps sections added later", () => {
+  it("inserts a missing section after its default predecessor", async () => {
+    const { withNewSections, SECTION_ORDER } = await import("./sections");
+    const saved = SECTION_ORDER.filter((k) => k !== "showcase").reverse();
+    const out = withNewSections(saved);
+    expect(out).toContain("showcase");
+    expect(out.indexOf("showcase")).toBe(out.indexOf("featured") + 1);
+    expect(out).toHaveLength(SECTION_ORDER.length);
+    expect(withNewSections(undefined)).toEqual(SECTION_ORDER);
   });
 });

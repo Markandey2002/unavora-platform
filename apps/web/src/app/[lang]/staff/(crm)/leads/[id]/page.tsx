@@ -58,6 +58,8 @@ export default async function LeadDetail({
           <dt className="text-slate">{t.stage}</dt><dd data-testid="lead-stage">{stageName(lead.stage)}</dd>
           <dt className="text-slate">{t.type}</dt><dd>{lead.enquiryType}</dd>
           <dt className="text-slate">{t.property}</dt><dd>{lead.propertyTitle ?? "—"}</dd>
+          <dt className="text-slate">{t.source}</dt><dd data-testid="lead-source">{lead.source ?? "—"}{lead.campaign ? ` · ${lead.campaign}` : ""}</dd>
+          {lead.preferredLocation && <><dt className="text-slate">{t.preferredLocation}</dt><dd>{lead.preferredLocation}</dd></>}
           <dt className="text-slate">{t.priority}</dt><dd>{lead.priority}</dd>
           <dt className="text-slate">{t.created}</dt><dd>{fmtDateTime(lead.createdAt, lang)}</dd>
           <dt className="text-slate">{t.nextAction}</dt><dd>{lead.nextActionAt ? `${fmtDateTime(lead.nextActionAt, lang)} ${lead.nextActionNote ?? ""}` : "—"}</dd>

@@ -26,6 +26,9 @@ class EnquiryService {
     record EnquiryResult(String reference, boolean created) {}
 
     /** Enquiry types a website visitor may choose (all allowed by ck_leads_enquiry_type). */
+    /** Showcase category -> lead enquiry type (the lead table's existing vocabulary). */
+    static final java.util.Map<String, String> SHOWCASE_TYPES = java.util.Map.of("residential", "residential", "villa", "residential",
+            "commercial", "commercial", "office", "commercial", "land", "general", "project_style", "project");
     static final Set<String> VISITOR_TYPES = Set.of("general", "callback", "site_visit", "residential", "commercial", "project");
 
     private final JdbcClient jdbc;
@@ -33,9 +36,12 @@ class EnquiryService {
     private final RateLimiter limiter;
     private final LeadWriter leads;
     private final int perIpPerHour;
+    private final com.unavora.platform.PublicVisibility visibility;
 
     EnquiryService(JdbcClient jdbc, PropertyLookup properties, RateLimiter limiter, LeadWriter leads,
-                   @Value("${unavora.rate-limit.enquiry-per-ip-per-hour:10}") int perIpPerHour) {
+                   @Value("${unavora.rate-limit.enquiry-per-ip-per-hour:10}") int perIpPerHour,
+                   com.unavora.platform.PublicVisibility visibility) {
+        this.visibility = visibility;
         this.jdbc = jdbc;
         this.properties = properties;
         this.limiter = limiter;
@@ -64,6 +70,20 @@ class EnquiryService {
             assignee = listing.assignedUserId();
         }
 
+        // Showcase / register-interest enquiries: general interest only, never linked to a property or project.
+        String showcaseCategory = null;
+        if (req.showcaseId() != null) {
+            if (req.propertyId() != null) throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "validation_failed", "Choose a property or a showcase, not both");
+            showcaseCategory = jdbc.sql("SELECT category FROM showcase_items s WHERE s.id = :id AND s.status = 'published'" + visibility.samples("s"))
+                    .param("id", req.showcaseId())
+                    .query(String.class).optional()
+                    .orElseThrow(() -> new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "showcase_unavailable", "This example is no longer shown"));
+        }
+        boolean launchInterest = "new_launches".equals(req.context()) && req.propertyId() == null;
+        if (req.context() != null && !req.context().isBlank() && !"new_launches".equals(req.context())) {
+            throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "validation_failed", "Unknown enquiry context");
+        }
+
         UUID customerId = customer(req.name(), phone, email, req.language(), null);
 
         leads.recordConsent(customerId, "service_contact", true, "website_enquiry");
@@ -71,12 +91,24 @@ class EnquiryService {
             leads.recordConsent(customerId, "marketing_whatsapp", req.marketingConsent(), "website_enquiry");
         }
 
+        boolean showcase = showcaseCategory != null || launchInterest;
+        String type = req.propertyId() != null ? "property"
+                : showcaseCategory != null ? SHOWCASE_TYPES.getOrDefault(showcaseCategory, "general")
+                : launchInterest ? "project" : (visitorType != null ? visitorType : "general");
         var created = leads.create(new LeadWriter.LeadDraft(customerId,
-                req.propertyId() != null ? "website_property" : "website_contact", req.propertyId(),
-                req.propertyId() != null ? "property" : (visitorType != null ? visitorType : "general"), blankToNull(req.message()), assignee,
+                req.propertyId() != null ? "website_property" : showcase ? "website_showcase" : "website_contact", req.propertyId(),
+                type, blankToNull(req.message()), assignee,
                 req.propertyId() != null ? 20 : 0, idempotencyKey, null, null,
-                req.propertyId() != null ? "Property enquiry received from website" : "General enquiry received from website",
+                req.propertyId() != null ? "Property enquiry received from website"
+                        : showcaseCategory != null ? "Interest in " + showcaseCategory.replace('_', ' ') + " (illustrative showcase) received from website"
+                        : launchInterest ? "New-launch interest registered on website" : "General enquiry received from website",
                 "public", ipHash));
+        String campaign = showcaseCategory != null ? "showcase:" + showcaseCategory : launchInterest ? "new-launches-interest" : null;
+        String location = blankToNull(req.preferredLocation());
+        if (campaign != null || location != null) {
+            jdbc.sql("UPDATE leads SET campaign = :c, preferred_location = :l WHERE id = :id")
+                    .param("c", campaign).param("l", location == null ? null : location.trim()).param("id", created.id()).update();
+        }
         return new EnquiryResult(created.reference(), true);
     }
 

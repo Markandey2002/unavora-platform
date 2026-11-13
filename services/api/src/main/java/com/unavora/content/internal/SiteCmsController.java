@@ -187,7 +187,8 @@ class SiteCmsController {
         int used = jdbc.sql("SELECT count(*) FROM site_blocks WHERE coalesce(draft_json, '') LIKE :p OR coalesce(published_json, '') LIKE :p")
                 .param("p", "%" + id + "%").query(Integer.class).single()
                 + jdbc.sql("SELECT count(*) FROM associations WHERE logo_media_id = :id").param("id", id).query(Integer.class).single()
-                + jdbc.sql("SELECT count(*) FROM articles WHERE cover_media_id = :id").param("id", id).query(Integer.class).single();
+                + jdbc.sql("SELECT count(*) FROM articles WHERE cover_media_id = :id").param("id", id).query(Integer.class).single()
+                + jdbc.sql("SELECT count(*) FROM showcase_items WHERE image_media_id = :id").param("id", id).query(Integer.class).single();
         if (used > 0) throw new ApiException(HttpStatus.CONFLICT, "in_use", "This image is used on the website; replace it first");
         media.delete(MediaLibrary.Target.SITE, MediaLibrary.SITE_LIBRARY, id);
         audit("cms.media.deleted", "site_media", id.toString());

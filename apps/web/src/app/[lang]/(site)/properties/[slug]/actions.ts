@@ -22,8 +22,12 @@ export async function enquire(_prev: EnquiryState, formData: FormData): Promise<
     {
       name: str("name"), phone: str("phone"), email: str("email") || undefined, message: str("message") || undefined,
       propertyId: str("propertyId") || undefined, language: str("language") || "en", consent,
-      marketingConsent: formData.get("marketingConsent") === "on",
+      // only recorded when the question was actually shown (compact forms do not ask it)
+      marketingConsent: formData.has("marketingAsked") ? formData.get("marketingConsent") === "on" : undefined,
       enquiryType: str("enquiryType") || undefined,
+      showcaseId: /^[0-9a-f-]{36}$/.test(str("showcaseId")) ? str("showcaseId") : undefined,
+      context: str("context") === "new_launches" ? "new_launches" : undefined,
+      preferredLocation: str("preferredLocation").slice(0, 200) || undefined,
     },
     str("idempotencyKey"),
     clientIp(await headers()),

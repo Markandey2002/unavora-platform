@@ -39,7 +39,7 @@ Rules for this plan:
 ## Remains blocked on the business (cannot be built or invented)
 
 - Real photographs, project details, prices and possession dates.
-- Verified phone, WhatsApp, email and addresses; official social accounts.
+- WhatsApp number and office addresses; official social accounts (phone and e-mail verified 2026-11-12).
 - Approved copy, testimonials with consent, and association logos with permission.
 - Google Cloud OAuth client and test accounts; Meta/WhatsApp Business setup.
 - A malware-scanning service in staging; AWS buckets and CDN.
@@ -52,3 +52,18 @@ See CONTENT_READINESS_CHECKLIST.md.
 - Samples and test content can never reach a production public page (automated tests).
 - All existing tests plus the new ones pass.
 - Reports state clearly that the site is **not** production-ready until the blocked items are resolved.
+
+## Status 2026-11-12
+
+Steps 1–11 of this plan are implemented locally and on PR #1 (see WEBSITE_FUNCTIONALITY_MATRIX.md and
+TEST_RESULTS.md §15). Added since: representative photos for sample records (D-042), verified company e-mail and
+phone. Remaining work needs business input (CONTENT_READINESS_CHECKLIST.md) or staging infrastructure (real malware
+scanner, S3/CDN), plus: merge PR #1 after green CI; owner screen-reader check; photographer names for representative
+photos.
+
+## Status update 2026-11-12 (showcase round)
+
+Added: illustrative showcase content type with its Director CMS screen (V18/V19), "Discover upcoming opportunities"
+panel, showcase/register-interest leads, Featured Properties hidden without real listings. See SHOWCASE_GAP_REPORT.md
+and LAUNCH_READINESS_REPORT.md. Still open in code: /offices and /videos pages, per-category Explore rows, full viewport
+sweep of the new sections.

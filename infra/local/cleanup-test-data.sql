@@ -32,6 +32,8 @@ UPDATE properties p SET status = 'withdrawn'
  WHERE p.status = 'published' AND EXISTS (SELECT 1 FROM property_translations t WHERE t.property_id = p.id AND t.slug LIKE 'e2e-%');
 -- test social link written by the Playwright journeys (never a real account)
 DELETE FROM site_settings WHERE key LIKE 'social.%' AND value LIKE '%unavora_e2e%';
+-- showcase items created by e2e/showcase-cms.spec.ts (title "E2E showcase <n>") are archived, never deleted
+UPDATE showcase_items SET status = 'archived', updated_at = now() WHERE title_en LIKE 'E2E showcase %' AND status <> 'archived';
 UPDATE properties p SET is_sample = true
  WHERE NOT is_sample AND EXISTS (SELECT 1 FROM property_translations t WHERE t.property_id = p.id AND t.title LIKE '[SAMPLE]%');
 UPDATE projects p SET is_sample = true

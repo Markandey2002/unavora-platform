@@ -220,6 +220,20 @@ http://localhost:3000/en/staff/leads/40000000-0000-0000-0001-000000000007 (see s
 | I9 | `/en/projects` → [SAMPLE] Gomti Greens Residences | Project page with unit table; the sample RERA number is NOT shown (unverified) |
 | I10 | `/en/no-such-page` | Branded 404 with header and footer |
 
+## 5a. Illustrative showcase (added 2026-11-12)
+
+1. Load the demo items once: `python infra/local/showcase/load_showcase_demo.py` (needs the representative photos
+   loaded first, see infra/local/representative-photos).
+2. Home → "Explore property styles": every card shows "Illustrative example"; the disclosure sits above the cards; no
+   prices, sizes, dates or RERA appear. Category chips filter the cards.
+3. Click "Enquire about similar" → the contact form says which illustrative example you asked about and has no
+   property picker. Send it → a LEAD-… reference. In the CRM the lead shows Source "Website - showcase / register
+   interest · showcase:<category>" and no property.
+4. To see the site as customers would with no real inventory, start the API with
+   `--unavora.public.include-sample-content=false`, delete `apps/web/.next/standalone/.next/cache/fetch-cache` and
+   restart the web server: New launches shows "Discover upcoming opportunities" with Register your interest, and
+   Featured properties is hidden.
+
 ## 6. Optional: check the local "notifications"
 
 Stage changes, assignments, visits and follow-ups write events to the local outbox (never sent anywhere):

@@ -22,7 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
  * a non-local deployment could start with synthetic data. Each test rolls back what it inserts (shared database).
  */
 @Transactional
-@TestPropertySource(properties = "unavora.public.include-sample-content=false")
+@TestPropertySource(properties = {"unavora.public.include-sample-content=false", "unavora.media.public-base-url=http://media.test/m"})
 class ProductionVisibilityIT extends IntegrationTestBase {
     @Autowired JdbcClient jdbc;
     @Autowired PublicVisibility visibility;
@@ -50,6 +50,27 @@ class ProductionVisibilityIT extends IntegrationTestBase {
             mvc.perform(get("/api/v1/public/properties?lang=en&limit=50&sort=" + sort))
                     .andExpect(jsonPath("$.items[*].title", not(hasItem(org.hamcrest.Matchers.startsWith("[SAMPLE]")))));
         }
+    }
+
+    @Test
+    void localDemoShowcaseItemsAreNeverPublicButApprovedOnesAre() throws Exception {
+        UUID media = jdbc.sql("""
+                INSERT INTO site_media (storage_key, kind, alt_en, licence, scan_status, processing_status, is_public, approved_at)
+                VALUES ('site/test.jpg', 'representative', 'Towers', 'Unsplash License', 'clean', 'ready', true, now()) RETURNING id""")
+                .query(UUID.class).single();
+        for (Object[] row : new Object[][]{{"Demo sample card", true}, {"Approved showcase card", false}}) {
+            jdbc.sql("""
+                    INSERT INTO showcase_items (category, title_en, description_en, image_media_id, status, published_at, is_sample)
+                    VALUES ('residential', :t, 'x', :m, 'published', now(), :s)""").param("t", row[0]).param("m", media).param("s", row[1]).update();
+        }
+        mvc.perform(get("/api/v1/public/showcase?lang=en"))
+                .andExpect(jsonPath("$[*].title", hasItem("Approved showcase card")))
+                .andExpect(jsonPath("$[*].title", not(hasItem("Demo sample card"))));
+        UUID sample = jdbc.sql("SELECT id FROM showcase_items WHERE title_en = 'Demo sample card'").query(UUID.class).single();
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/v1/public/enquiries")
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"X\",\"phone\":\"9811100001\",\"consent\":true,\"showcaseId\":\"" + sample + "\"}"))
+                .andExpect(status().isUnprocessableEntity());
     }
 
     @Test

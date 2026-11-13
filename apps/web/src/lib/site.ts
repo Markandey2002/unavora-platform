@@ -19,6 +19,12 @@ export function contactFrom(company: CompanyInfo): SiteContact {
   };
 }
 
+/** Readable phone for display: Indian mobiles as "+91 98765 43210"; other E.164 numbers unchanged. Links keep E.164. */
+export function formatPhone(e164: string): string {
+  const m = /^\+91(\d{5})(\d{5})$/.exec(e164);
+  return m ? `+91 ${m[1]} ${m[2]}` : e164;
+}
+
 export function whatsappHref(e164: string, text?: string): string {
   return `https://wa.me/${e164.replace(/^\+/, "")}${text ? `?text=${encodeURIComponent(text)}` : ""}`;
 }
