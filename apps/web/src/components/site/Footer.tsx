@@ -3,6 +3,7 @@ import type { ExtraDictionary } from "@/i18n/extra";
 import type { SiteDictionary } from "@/i18n/site";
 import type { CompanyInfo } from "@/lib/api";
 import { cityLabel, contactFrom, whatsappHref, formatPhone } from "@/lib/site";
+import { BRAND, brandName } from "@/lib/brand";
 import { Logo } from "./Logo";
 import { SocialIcon, socialNames } from "./SocialIcon";
 import { Icon } from "./ui";
@@ -18,7 +19,7 @@ export function Footer({ lang, t, company, extra, x }: { lang: string; t: SiteDi
   const c = contactFrom(company);
   const offices = company.offices.filter((o) => o.address);
   const year = new Date().getFullYear();
-  const name = company.settings.display_name ?? "UNAVORA ANANT INFRA";
+  const name = company.settings.display_name ?? brandName(lang);
   const link = "inline-flex min-h-10 items-center text-ivory/75 transition-colors hover:text-gold";
   const head = "eyebrow text-gold";
   const social = [
@@ -45,7 +46,7 @@ export function Footer({ lang, t, company, extra, x }: { lang: string; t: SiteDi
       <div className="mx-auto grid max-w-7xl gap-x-10 gap-y-0 px-4 py-14 md:gap-y-10 sm:px-6 md:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1.2fr] lg:px-8 lg:py-20">
         <div className="max-w-sm pb-8 md:pb-0">
           <Logo lang={lang} plate />
-          <p className="font-display mt-5 text-lg italic text-gold">{company.settings.tagline ?? "Building Trust. Creating Value."}</p>
+          <p className="font-display mt-5 text-lg italic text-gold">{company.settings.tagline ?? BRAND.tagline}</p>
           <p className="mt-3 text-sm leading-relaxed text-ivory/70">{t.footer.about}</p>
           {social.length > 0 && (
             <div className="mt-6">

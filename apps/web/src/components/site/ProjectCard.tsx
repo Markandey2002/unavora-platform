@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { SafeImage } from "@/components/site/SafeImage";
 import Link from "next/link";
 import type { ExtraDictionary } from "@/i18n/extra";
 import type { SiteDictionary } from "@/i18n/site";
@@ -25,7 +25,7 @@ export function ProjectCard({ p, lang, s, x, headingLevel = "h3", eager = false 
       <div className="zoom-on-hover relative aspect-[16/10] overflow-hidden bg-sand">
         {p.coverImage ? (
           <>
-            <Image src={p.coverImage} alt={p.coverAlt ?? p.name} fill sizes="(min-width:1024px) 33vw, (min-width:640px) 50vw, 90vw"
+            <SafeImage src={p.coverImage} alt={p.coverAlt ?? p.name} fill sizes="(min-width:1536px) 25vw, (min-width:1024px) 33vw, (min-width:640px) 50vw, 90vw"
               preload={eager} className="object-cover" />
             <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-navy/60 to-transparent" />
             {p.coverKind === "representative" && <RepresentativeTag label={s.photo.representative} className="bottom-2 right-2" />}
@@ -35,14 +35,14 @@ export function ProjectCard({ p, lang, s, x, headingLevel = "h3", eager = false 
         )}
         <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
           {status && <span className="eyebrow bg-navy px-2.5 py-1 !text-[0.62rem] text-gold">{status}</span>}
-          {category && <span className="eyebrow bg-ivory/95 px-2.5 py-1 !text-[0.62rem] text-navy">{category}</span>}
           {p.sample && <SampleBadge label={x.sample.badge} note={x.sample.note} />}
         </div>
       </div>
       <div className="flex flex-1 flex-col p-5">
+        {category && <p className="eyebrow text-gold-700">{category}</p>}
         {where && (
-          <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.12em] text-muted [:lang(hi)_&]:tracking-normal">
-            <Icon name="pin" className="size-4 text-gold-700" />{where}
+          <p className={`flex items-start gap-1.5 text-xs font-medium uppercase tracking-[0.12em] text-muted [:lang(hi)_&]:tracking-normal ${category ? "mt-2" : ""}`}>
+            <Icon name="pin" className="size-4 shrink-0 text-gold-700" /><span className="min-w-0">{where}</span>
           </p>
         )}
         <H className="font-display mt-2 text-2xl font-semibold leading-snug">

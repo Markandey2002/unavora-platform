@@ -1,5 +1,5 @@
+import { SafeImage } from "@/components/site/SafeImage";
 import Link from "next/link";
-import Image from "next/image";
 import { PhotoPending } from "@/components/site/PhotoPending";
 import { SampleBadge } from "@/components/site/SampleBadge";
 import { Icon, RepresentativeTag } from "@/components/site/ui";
@@ -36,7 +36,7 @@ export function PropertyCard({ p, lang, t, s, headingLevel = "h3" }: {
     <li className="card-lift group relative flex flex-col bg-white shadow-[var(--shadow-card)]">
       <div className="zoom-on-hover relative aspect-[4/3] overflow-hidden bg-sand">
         {p.coverImage
-          ? <><Image src={p.coverImage} alt={p.title} fill sizes="(min-width:1024px) 33vw, (min-width:640px) 50vw, 90vw" className="object-cover" />
+          ? <><SafeImage src={p.coverImage} alt={p.title} fill sizes="(min-width:1536px) 25vw, (min-width:1024px) 33vw, (min-width:640px) 50vw, 90vw" className="object-cover" />
             {p.coverKind === "representative" && <RepresentativeTag label={s.photo.representative} className="bottom-2 right-2" />}</>
           : <PhotoPending label={x.photo.pending} compact />}
         <div className="absolute left-4 top-4 flex flex-wrap gap-1.5">

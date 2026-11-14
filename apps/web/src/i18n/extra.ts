@@ -74,7 +74,7 @@ const en = {
   },
   viewer: { open: "View all photos", close: "Close", prev: "Previous photo", next: "Next photo", of: "{i} of {n}", swipe: "Swipe for more photos" },
   launch: {
-    eyebrow: "New launches", title: "Newly launched projects", sub: "Projects we publish only after their details are approved.",
+    eyebrow: "New launches", title: "Newly Launched Properties", prevCards: "Show previous cards", nextCards: "Show next cards", goTo: "Go to card {n} of {total}", pauseAuto: "Pause automatic scrolling", playAuto: "Resume automatic scrolling", sub: "Projects we publish only after their details are approved.",
     pageTitle: "New launches", pageSub: "Search approved project launches by name, developer or location.",
     search: "Project, developer or location", category: "Category", type: "Property type", city: "City", status: "Status",
     any: "Any", apply: "Search", clear: "Clear filters", results: "{n} projects", result1: "1 project",
@@ -99,6 +99,8 @@ const en = {
     discoverNote: "Approved new launches are published here as soon as their details, photographs and approvals are confirmed. Register your interest and our team will contact you first.",
     imageNote: "Representative image",
     labelActual: "Photo of a listed property", labelRender: "Project render",
+    projectStylesTitle: "Explore Project Styles",
+    projectStylesNote: "Representative images of project styles only, not specific launches. Real launch information appears here once approved.",
   },
   crm: {
     listings: "Listings", projects: "Projects", newListing: "New listing", newProject: "New project", search: "Search",
@@ -133,7 +135,7 @@ const en = {
     projectNote: "Publishing needs a locality, a category and an English description. Each fact appears publicly only when its approval box is ticked.",
   },
   associations: {
-    eyebrow: "Associations", title: "Organisations we work with", sub: "Relationships confirmed by UNAVORA ANANT INFRA; logos shown with permission.",
+    eyebrow: "Associations", title: "Organisations we work with", sub: "Relationships confirmed by UNAVORA ANANT REAL ESTATE; logos shown with permission.",
     kinds: { developer_partner: "Developer partner", channel_partner: "Channel partner", banking_partner: "Banking partner", industry_body: "Industry body", other: "Associate" } as Record<string, string>,
   },
   preview: { banner: "PREVIEW: draft website content, visible to staff only. Not published." },
@@ -252,7 +254,7 @@ const hi: ExtraDictionary = {
   },
   viewer: { open: "सभी तस्वीरें देखें", close: "बंद करें", prev: "पिछली तस्वीर", next: "अगली तस्वीर", of: "{n} में से {i}", swipe: "और तस्वीरों के लिए स्वाइप करें" },
   launch: {
-    eyebrow: "नए लॉन्च", title: "नए लॉन्च हुए प्रोजेक्ट", sub: "हम प्रोजेक्ट तभी प्रकाशित करते हैं जब उनका विवरण स्वीकृत हो।",
+    eyebrow: "नए लॉन्च", title: "नई लॉन्च संपत्तियाँ", prevCards: "पिछले कार्ड दिखाएँ", nextCards: "अगले कार्ड दिखाएँ", goTo: "कार्ड {n} / {total} पर जाएँ", pauseAuto: "अपने-आप स्क्रॉल रोकें", playAuto: "अपने-आप स्क्रॉल फिर शुरू करें", sub: "हम प्रोजेक्ट तभी प्रकाशित करते हैं जब उनका विवरण स्वीकृत हो।",
     pageTitle: "नए लॉन्च", pageSub: "नाम, डेवलपर या स्थान से स्वीकृत प्रोजेक्ट लॉन्च खोजें।",
     search: "प्रोजेक्ट, डेवलपर या स्थान", category: "श्रेणी", type: "संपत्ति प्रकार", city: "शहर", status: "स्थिति",
     any: "कोई भी", apply: "खोजें", clear: "फ़िल्टर हटाएँ", results: "{n} प्रोजेक्ट", result1: "1 प्रोजेक्ट",
@@ -277,6 +279,8 @@ const hi: ExtraDictionary = {
     discoverNote: "स्वीकृत नए लॉन्च, उनका विवरण, तस्वीरें और स्वीकृतियाँ पक्की होते ही यहाँ प्रकाशित होते हैं। अपनी रुचि दर्ज करें, हमारी टीम सबसे पहले आपसे संपर्क करेगी।",
     imageNote: "प्रतिनिधि चित्र",
     labelActual: "सूचीबद्ध संपत्ति की फ़ोटो", labelRender: "प्रोजेक्ट रेंडर",
+    projectStylesTitle: "प्रोजेक्ट शैलियाँ देखें",
+    projectStylesNote: "केवल प्रोजेक्ट शैलियों के प्रतिनिधि चित्र, कोई विशेष लॉन्च नहीं। स्वीकृति के बाद असली लॉन्च की जानकारी यहाँ दिखेगी।",
   },
   crm: {
     listings: "लिस्टिंग", projects: "प्रोजेक्ट", newListing: "नई लिस्टिंग", newProject: "नया प्रोजेक्ट", search: "खोजें",
@@ -311,7 +315,7 @@ const hi: ExtraDictionary = {
     projectNote: "प्रकाशन के लिए इलाका, श्रेणी और अंग्रेज़ी विवरण आवश्यक हैं। हर तथ्य तभी सार्वजनिक दिखता है जब उसका स्वीकृति बॉक्स चुना हो।",
   },
   associations: {
-    eyebrow: "सहयोग", title: "जिन संगठनों के साथ हम काम करते हैं", sub: "यूनावोरा अनंत इन्फ्रा द्वारा पुष्ट संबंध; लोगो अनुमति के साथ दिखाए गए हैं।",
+    eyebrow: "सहयोग", title: "जिन संगठनों के साथ हम काम करते हैं", sub: "यूनावोरा अनंत रियल एस्टेट द्वारा पुष्ट संबंध; लोगो अनुमति के साथ दिखाए गए हैं।",
     kinds: { developer_partner: "डेवलपर पार्टनर", channel_partner: "चैनल पार्टनर", banking_partner: "बैंकिंग पार्टनर", industry_body: "उद्योग संस्था", other: "सहयोगी" } as Record<string, string>,
   },
   preview: { banner: "पूर्वावलोकन: ड्राफ्ट वेबसाइट सामग्री, केवल स्टाफ़ के लिए। प्रकाशित नहीं।" },

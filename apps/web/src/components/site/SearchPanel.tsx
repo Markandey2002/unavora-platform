@@ -70,13 +70,16 @@ export function SearchFields({ lang, s, cities, f = {}, keyword = false, lockCat
 export function HeroSearch({ lang, s, cities }: { lang: string; s: SiteDictionary; cities: string[] }) {
   return (
     <form action={`/${lang}/properties`} method="get" role="search" aria-label={s.search.title}
-      className="bg-ivory p-5 shadow-[var(--shadow-lift)] sm:p-6">
-      <p className="eyebrow text-gold-700">{s.search.title}</p>
-      <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-4 sm:gap-x-6 lg:grid-cols-[repeat(5,minmax(0,1fr))_auto] lg:items-end [&>label:first-child]:col-span-2 lg:[&>label:first-child]:col-span-1">
-        <SearchFields lang={lang} s={s} cities={cities} />
-        <button className={`${btn.gold} col-span-2 w-full lg:col-span-1`}>{s.search.submit}</button>
+      className="bg-ivory px-5 py-4 shadow-[var(--shadow-lift)] sm:px-6">
+      {/* compact: title and the sale note share one line; fields and the button in one row on desktop */}
+      <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+        <p className="eyebrow text-gold-700">{s.search.title}</p>
+        <p className="text-xs text-muted">{s.search.saleNote}</p>
       </div>
-      <p className="mt-3 text-xs text-muted">{s.search.saleNote}</p>
+      <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 sm:gap-x-6 md:grid-cols-3 lg:grid-cols-[repeat(5,minmax(0,1fr))_auto] lg:items-end [&>label:first-child]:col-span-2 md:[&>label:first-child]:col-span-1">
+        <SearchFields lang={lang} s={s} cities={cities} />
+        <button className={`${btn.gold} col-span-2 w-full md:col-span-1`}>{s.search.submit}</button>
+      </div>
     </form>
   );
 }

@@ -39,9 +39,9 @@ export function Header({ lang, t, extra }: { lang: string; t: SiteDictionary; ex
   const langLabels = { en: "EN", hi: "हिन्दी", aria: t.nav.language };
   return (
     <header className="sticky top-0 z-40 border-b border-navy/10 bg-ivory/90 backdrop-blur-md supports-[backdrop-filter]:bg-ivory/80">
-      <div className="mx-auto flex h-[4.5rem] max-w-7xl xl:h-20 items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto flex h-[4.5rem] max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         <Link href={`/${lang}`} className="flex min-h-11 shrink-0 items-center">
-          <Logo lang={lang} compactOnTiny />
+          <Logo lang={lang} compactOnPhone />
         </Link>
 
         <nav aria-label={t.nav.main} className="hidden xl:block">

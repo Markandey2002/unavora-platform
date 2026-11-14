@@ -4,7 +4,7 @@ import { cityLabel, cleanFilters, contactFrom, filterQuery, groupByCity, whatsap
 
 describe("contactFrom: only verified, well-formed channels are shown", () => {
   it("returns nothing when the API returns no verified contact", () => {
-    expect(contactFrom({ settings: { display_name: "UNAVORA ANANT INFRA" }, social: {}, offices: [] }))
+    expect(contactFrom({ settings: { display_name: "UNAVORA ANANT REAL ESTATE" }, social: {}, offices: [] }))
       .toEqual({ phone: undefined, whatsapp: undefined, email: undefined, social: [] });
   });
   it("keeps valid values and hides malformed ones instead of fixing them", () => {
@@ -63,7 +63,7 @@ describe("locations", () => {
 });
 
 describe("formatPhone: readable display, E.164 kept for links", () => {
-  it("groups Indian mobile numbers", () => expect(formatPhone("+918318377108")).toBe("+91 83183 77108"));
+  it("groups Indian mobile numbers", () => expect(formatPhone("+919194119150")).toBe("+91 91941 19150"));
   it("leaves other numbers unchanged", () => {
     expect(formatPhone("+441234567890")).toBe("+441234567890");
     expect(formatPhone("+91123")).toBe("+91123");

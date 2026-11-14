@@ -5,9 +5,10 @@ const isMobile = () => test.info().project.name === "mobile";
 
 test("home: official logo, hero, live figures, categories, featured listings, enquiry form", async ({ page }) => {
   await page.goto("/en");
-  await expect(page).toHaveTitle(/UNAVORA ANANT INFRA/);
-  await expect(page.locator("header img[alt*='UNAVORA ANANT INFRA']").first()).toBeVisible();
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Building Better Spaces. Creating Better Futures.");
+  await expect(page).toHaveTitle(/UNAVORA ANANT REAL ESTATE/);
+  // full logo from 640 px; monogram + text lockup on phones (same alt text)
+  await expect(page.locator("header img[alt*='UNAVORA ANANT REAL ESTATE']").filter({ visible: true }).first()).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("INVEST IN A BETTER LIVING");
   await expect(page.locator("h1")).toHaveCount(1);
   if (isMobile()) await expect(page.getByRole("button", { name: "Open property finder" })).toBeVisible();
   else await expect(page.getByRole("search", { name: "Find a property" })).toBeVisible();

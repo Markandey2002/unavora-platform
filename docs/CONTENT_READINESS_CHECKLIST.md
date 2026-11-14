@@ -7,7 +7,7 @@ until then the website shows an honest pending state or hides the section.
 
 | Item | Status |
 |---|---|
-| Public phone number (+91…) | **Verified 2026-11-12**: +91 83183 77108 (owner confirmed) |
+| Public phone number (+91…) | **Verified 2026-11-14**: +91 91941 19150 (owner confirmed; replaces +91 83183 77108) |
 | WhatsApp Business number | Missing |
 | Active public e-mail | **Verified 2026-11-12**: info@anantinfrarealty.com (owner confirmed) |
 | Registered office: full address, PIN, hours, Google Maps / OSM directions link | Missing |
@@ -88,3 +88,18 @@ photos (Unsplash licence) until real photographs are supplied.
 
 Local demo showcase items come from `infra/local/showcase/load_showcase_demo.py` (local only; generic wording, Unsplash
 images); production showcase content is written and approved by the director in the CMS.
+
+## 7. New brand, domain and business email (owner, 2026-11-13)
+
+Confirmed by the owner (recorded, not yet implemented; plan in MASTER_PLAN_2026-11-13.md and DOMAIN_MIGRATION_PLAN.md):
+
+| Item | Status |
+|---|---|
+| Public brand: UNAVORA ANANT REAL ESTATE, new horizontal green-and-gold UA logo, tagline "INVEST IN A BETTER LIVING" | **Approved by owner**; website still shows the UAI logo until the brand phase is implemented and approved. Raster PNG 1200 × 411 only |
+| Logo vector master (SVG/AI/PDF) and reversed version for dark backgrounds | Missing — designer to supply (not fabricated) |
+| Original logo file (as exported by the designer) | Requested (the chat copy may be re-encoded) |
+| New domain `uainfrarealestate.com` (Hostinger) as the canonical site | **Approved by owner**; DNS not changed; cut-over needs separate approval |
+| Primary business email `Rahul.Shukla@uainfrarealestate.com`, sender name "UNAVORA ANANT REAL ESTATE" | **Confirmed by owner — pending configuration**: domain mail is Hostinger Mail (MX, SPF, DKIM, DMARC `p=none` published); mailbox activation, plan/daily limit and SMTP sign-in to be confirmed by the owner in hPanel; TLS on `smtp.hostinger.com` 465/587 verified without login |
+| `info@anantinfrarealty.com` | Verified 2026-11-12 (unchanged); stays operational during the migration (old host) |
+| Phone +91 91941 19150 | **Verified 2026-11-14** (owner; replaces +91 83183 77108, migration V21) |
+| Exact registered legal name for legal pages | To confirm (kept separate from the public brand) |

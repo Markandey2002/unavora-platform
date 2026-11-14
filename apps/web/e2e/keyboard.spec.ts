@@ -28,7 +28,12 @@ test("phones: finder sheet and menu drawer open from the keyboard and close with
   const menu = page.getByRole("button", { name: "Open menu" });
   await menu.focus();
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("dialog", { name: "Main navigation" })).toBeVisible();
+  const drawer = page.getByRole("dialog", { name: "Main navigation" });
+  await expect(drawer).toBeVisible();
+  // the drawer must cover the screen and show its links (it was once clipped to the 72 px sticky header)
+  const box = await drawer.boundingBox();
+  expect(box!.height).toBeGreaterThan(page.viewportSize()!.height - 2);
+  await expect(drawer.getByRole("link", { name: "Contact us" })).toBeInViewport();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog", { name: "Main navigation" })).toBeHidden();
   await expect(menu).toBeFocused();

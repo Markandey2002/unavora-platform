@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { CustomerRequestForm } from "@/components/CustomerRequestForm";
 import { EnquiryForm } from "@/components/EnquiryForm";
+import { StickyActionBar } from "@/components/site/StickyActionBar";
 import { areaText, PropertyCard, priceText } from "@/components/PropertyCard";
 import { PhotoPending } from "@/components/site/PhotoPending";
 import { SampleBadge } from "@/components/site/SampleBadge";
@@ -81,7 +82,7 @@ export default async function PropertyPage({ params }: Props) {
   };
 
   return (
-    <div className="pb-24 lg:pb-0">
+    <div className="pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-0">
       <script {...jsonLd(ld)} />
       <div className="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
         <nav aria-label={s.detail.breadcrumb} className="text-xs text-muted">
@@ -210,11 +211,12 @@ export default async function PropertyPage({ params }: Props) {
         </section>
       )}
 
-      {/* Phones: contact actions stay within reach; the page has bottom padding so nothing is hidden behind the bar. */}
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-navy/10 bg-ivory/95 px-4 py-3 backdrop-blur lg:hidden">
+      {/* Phones: contact actions within reach; the bar hides itself over the enquiry form, the footer, focused fields
+          and the on-screen keyboard (StickyActionBar). Sample listings (local/test only) never show their price here. */}
+      <StickyActionBar watch="#enquire">
         <div className="mx-auto flex max-w-xl items-center gap-3">
           <div className="min-w-0 flex-1">
-            <p className="font-display truncate text-xl font-semibold leading-tight">{priceText(p, t)}</p>
+            <p className="font-display truncate text-xl font-semibold leading-tight">{p.sample ? x.sample.badge : priceText(p, t)}</p>
             <p className="truncate text-xs text-muted">{p.locality}, {cityLabel(p.city, lang)}</p>
           </div>
           {contact.phone && <a href={`tel:${contact.phone}`} aria-label={s.detail.call} className="flex size-12 items-center justify-center border border-navy/20"><Icon name="phone" /></a>}
@@ -224,7 +226,7 @@ export default async function PropertyPage({ params }: Props) {
           )}
           <a href="#enquire" className={`${btn.gold} !min-h-12 !px-5`}>{s.detail.enquire}</a>
         </div>
-      </div>
+      </StickyActionBar>
     </div>
   );
 }

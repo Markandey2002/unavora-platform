@@ -10,6 +10,7 @@ import { getSiteDictionary } from "@/i18n/site";
 import { getLocations } from "@/lib/api";
 import { brand, photos } from "@/lib/assets";
 import { seoMeta } from "@/lib/seo";
+import { BRAND, logoAlt } from "@/lib/brand";
 import { cityLabel, groupByCity } from "@/lib/site";
 
 type Props = { params: Promise<{ lang: string }> };
@@ -26,7 +27,7 @@ export default async function AboutPage({ params }: Props) {
   if (!isLang(lang)) notFound();
   const s = getSiteDictionary(lang);
   const cities = groupByCity(await getLocations(lang).catch(() => []));
-  const alt = brand.logoOnLight ? (lang === "hi" ? brand.logoOnLight.alt.hi : brand.logoOnLight.alt.en) : "UNAVORA ANANT INFRA";
+  const alt = brand.logoOnLight ? (lang === "hi" ? brand.logoOnLight.alt.hi : brand.logoOnLight.alt.en) : logoAlt(lang);
   return (
     <>
       <PageHero lang={lang} home={s.detail.home} breadcrumbLabel={s.detail.breadcrumb} crumbs={[{ label: s.nav.about }]}
@@ -36,7 +37,7 @@ export default async function AboutPage({ params }: Props) {
         <div>
           <p className="font-display text-2xl leading-snug text-navy sm:text-3xl">{s.about.p2}</p>
           <div className="mt-10 inline-flex bg-white p-6 shadow-[var(--shadow-card)]">
-            <Image src="/brand/unavora-logo-stacked.png" width={976} height={547} sizes="320px" alt={alt} className="h-auto w-64 sm:w-80" />
+            <Image src={BRAND.logo.primary.src} width={BRAND.logo.primary.width} height={BRAND.logo.primary.height} sizes="(min-width: 640px) 320px, 256px" alt={alt} className="h-auto w-64 sm:w-80" />
           </div>
         </div>
         <div className="relative min-h-[320px] overflow-hidden bg-navy">

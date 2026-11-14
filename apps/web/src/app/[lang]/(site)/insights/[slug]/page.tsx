@@ -10,6 +10,7 @@ import { isLang } from "@/i18n/dictionaries";
 import { getExtraDictionary } from "@/i18n/extra";
 import { getSiteDictionary } from "@/i18n/site";
 import { findSlugs, getArticle } from "@/lib/api";
+import { BRAND } from "@/lib/brand";
 import { jsonLd, pageMeta, siteUrl } from "@/lib/seo";
 
 type Props = { params: Promise<{ lang: string; slug: string }> };
@@ -48,7 +49,7 @@ export default async function InsightPage({ params }: Props) {
     ? { "@context": "https://schema.org", "@type": "VideoObject", name: a.title, description: a.excerpt ?? a.title, uploadDate: a.publishedAt,
         embedUrl: `https://www.youtube-nocookie.com/embed/${a.youtubeId}`, inLanguage: lang }
     : { "@context": "https://schema.org", "@type": "Article", headline: a.title, author: { "@type": "Person", name: a.authorName },
-        datePublished: a.publishedAt, inLanguage: lang, mainEntityOfPage: url, publisher: { "@type": "Organization", name: "UNAVORA ANANT INFRA" } };
+        datePublished: a.publishedAt, inLanguage: lang, mainEntityOfPage: url, publisher: { "@type": "Organization", name: BRAND.name.en } };
   const share = [
     ["WhatsApp", `https://wa.me/?text=${encodeURIComponent(`${a.title} ${url}`)}`],
     ["LinkedIn", `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`],

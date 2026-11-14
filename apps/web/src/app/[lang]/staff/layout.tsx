@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
+import { Logo } from "@/components/site/Logo";
 import { getDictionary, isLang } from "@/i18n/dictionaries";
 
 /**
@@ -15,8 +16,8 @@ export default async function StaffShell({ children, params }: { children: React
   return (
     <div>
       <header className="bg-navy text-ivory">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
-          <Link href={`/${lang}`} className="text-lg font-semibold tracking-wide text-gold">{t.brand}</Link>
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3">
+          <Link href={`/${lang}`} aria-label={t.brand} className="inline-flex min-h-11 items-center"><Logo lang={lang} plate size="sm" /></Link>
           <nav className="flex items-center gap-4 text-sm">
             <Link href={`/${lang}/properties`} className="min-h-11 content-center hover:text-gold">{t.properties}</Link>
             <Link href={`/${lang}/account`} className="min-h-11 content-center hover:text-gold">{t.account}</Link>

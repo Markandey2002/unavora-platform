@@ -1,22 +1,25 @@
+import { BRAND, logoAlt } from "@/lib/brand";
+
 // Approved brand files and photographs. Each slot is null until an APPROVED file exists in apps/web/public;
 // components fall back to the typographic lockup / labelled illustrations while a slot is null.
 // Never point a slot at a remote URL or at a stock photo presented as a real UNAVORA property.
 //
-// Logo files: regenerate with `python -I assets/brand/make_logo_assets.py` (from the official sheet). When a vector
-// master is supplied, replace the PNGs with SVGs and update width/height here.
+// Logo files: regenerate with `python -I assets/brand/make_brand_assets.py` from
+// assets/brand/source/unavora-anant-real-estate-primary.png. When a vector master is supplied, replace the PNGs with
+// SVGs and update width/height in lib/brand.ts. The old UAI files are archived in assets/brand/archive/ (not served).
 export type ImageSlot = { src: string; width: number; height: number; alt: { en: string; hi: string } } | null;
 
-const logoAlt = { en: "UNAVORA ANANT INFRA Real Estate Private Limited - Building Trust. Creating Value.", hi: "यूनावोरा अनंत इन्फ्रा रियल एस्टेट प्राइवेट लिमिटेड - भरोसा बनाना। मूल्य रचना।" };
+const alt = { en: logoAlt("en"), hi: logoAlt("hi") };
 
 /**
- * Official logo (final, supplied 2026-11-08): files cut from the logo sheet by assets/brand/make_logo_assets.py
- * without altering the artwork. The source is a JPEG, so the cut-outs are used on LIGHT surfaces only; on navy the
- * footer places the lockup on a warm-white plate. logoOnDark stays null until a vector/reversed master exists.
+ * Official UNAVORA ANANT REAL ESTATE logo (final, approved 2026-11-13), from the central brand config. The source is a
+ * raster on a cream background, so the logo is used on LIGHT surfaces only; on navy the footer and staff header put it
+ * on a light plate. logoOnDark stays null until the designer supplies a reversed/vector master.
  */
 export const brand: { logoOnLight: ImageSlot; logoOnDark: ImageSlot; mark: ImageSlot } = {
-  logoOnLight: { src: "/brand/unavora-logo-horizontal.png", width: 473, height: 119, alt: logoAlt },
+  logoOnLight: { ...BRAND.logo.primary, alt },
   logoOnDark: null,
-  mark: { src: "/brand/unavora-mark.png", width: 382, height: 372, alt: { en: "UNAVORA ANANT INFRA", hi: "यूनावोरा अनंत इन्फ्रा" } },
+  mark: { ...BRAND.logo.mark, alt },
 };
 
 /**

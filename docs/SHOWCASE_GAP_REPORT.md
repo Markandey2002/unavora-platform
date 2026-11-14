@@ -65,3 +65,5 @@ Playwright full suite 78 passed / 11 skipped / 1 failed once (`site.spec` sitema
 existing test, unrelated); new `showcase.spec` 7 passed / 1 skipped in production-visibility mode.
 Not done yet: CMS screen for showcase items (stage 2), /offices and /videos pages, per-category Explore rows,
 viewport sweep and UI review update.
+
+_Note 2026-11-14: the public phone is now **+91 91941 19150** (`tel:+919194119150`); mentions of +91 83183 77108 above describe the state at the time._

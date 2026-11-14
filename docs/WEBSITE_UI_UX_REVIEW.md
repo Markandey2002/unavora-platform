@@ -99,7 +99,7 @@ Home transfers ~0.66 MB on mobile (mostly the hero photo, served as responsive W
 ## 7. Missing business assets (needed before launch)
 
 - Real photographs of listings and projects (and the public media store to upload them).
-- ~~Verified phone and email~~ **verified 2026-11-12** (+91 83183 77108, info@anantinfrarealty.com; CONTENT_READINESS_CHECKLIST). Still pending: WhatsApp number, office addresses, legal details (RERA/CIN); the site shows none of these until marked verified in CRM → Company facts.
+- ~~Verified phone and email~~ **verified** (phone +91 91941 19150 since 2026-11-14, previously +91 83183 77108; info@anantinfrarealty.com; CONTENT_READINESS_CHECKLIST). Still pending: WhatsApp number, office addresses, legal details (RERA/CIN); the site shows none of these until marked verified in CRM → Company facts.
 - Approved company copy (About, vision/mission) and real Insights articles.
 - Testimonials with written display consent.
 - Partner/developer logos with permission; social media URLs.
@@ -197,7 +197,97 @@ Status by category: LAUNCH_READINESS_REPORT.md.
 | Showcase cards | "Illustrative example" label (navy/gold), disclosure above the cards, category chips; no price/size/date/RERA/availability; never in property search or structured data |
 | CMS | CRM → Website content → Showcase: English/Hindi text, category, position, button, image from the approved library (replace any time), optional link to a published real property/project, desktop + phone preview, submit / publish / unpublish / archive, audit history |
 | CRM | showcase and register-interest enquiries: source "Website - showcase / register interest", campaign, preferred location, no property id; the lead page shows source, campaign and location |
-| Contact display | phone shown as "+91 83183 77108", links `tel:+918318377108`; mobile footer accordions stack tightly |
+| Contact display | phone shown as "+91 91941 19150" (since 2026-11-14), links `tel:+919194119150`; mobile footer accordions stack tightly |
 
 Known limitation (observed 2026-11-12): after a CMS change, a public page pre-rendered at build time may keep its
 previous version until its 60-second refresh (seen on `/hi`; `/en` updated at once). The browser test allows that window.
+
+---
+
+# Round 4 — homepage first screen and New launches carousel (2026-11-13, uncommitted)
+
+Brief: "Homepage above-the-fold and New Launch carousel correction" (reference: Team Aman Chawla first screen; structure
+only, nothing copied). Measured with Playwright on the local standalone build (`fold.mjs`: element positions from the top
+of the page, Chromium, device scale 1). Brand colours, logo, search API, CRM flow and showcase CMS unchanged.
+
+## Measurements (desktop 1024–1920 px identical; px from the top of the page)
+
+| Element | Before | After | Target |
+|---|---|---|---|
+| Header height | 81 (≥1280 px), 73 below | **73** (72 + 1 px border) at all widths | 68–76 |
+| Hero height | 630 | **400** | 380–430 |
+| Property finder height | 179 | **131** (title and sale note on one line, one row of fields + Search) | 130–155 |
+| Finder top / overlap of hero | 583 / 128 | 409 / 64 | overlaps the lower edge |
+| Section gap finder → New launches | 64–96 (section `py-16/24`) | 48 (`pt-12`) | 40–55 |
+| "Newly Launched Properties" heading top @1920×1200 | 892 | **614** | ~570–650 |
+| First card photo top @1920×1200 | 1022 | **683** (photos visible in the first screen) | visible |
+| First card photo top @1440×900 | 1022 (below the fold) | **683** (in the fold) | visible |
+
+Phones (finder is the existing bottom-sheet button inside the hero): heading top 512 @390×844 (was 556), first card 571
+(was 697); 555 / 614 @360×780; 650 / 709 @320×700 (heading in the first screen, card just below). Tablet 768×1024:
+hero 444, finder 212 (three columns), heading 723, card 784.
+
+## Carousel (`components/site/Carousel.tsx`)
+
+| Width | Cards fully visible | Arrows | Page overflow-x |
+|---|---|---|---|
+| 320–430 | 1 + peek of the next | hidden (native swipe, scroll snap) | 0 |
+| 768 | 2 | shown when there is more | 0 |
+| 1024–1920 | 3 | shown when there is more | 0 |
+
+No autoplay. Arrow buttons are labelled ("Previous projects" / "Next projects"), keyboard-operable, disabled at the
+ends, with a gold focus ring; the track is focusable (Left/Right keys scroll natively); mouse drag on desktop scrolls one
+card without triggering the card link (verified: drag 413 px, URL unchanged); touch swipe verified with CDP touch events.
+Smooth scrolling is turned off for `prefers-reduced-motion`.
+
+## Content modes (no new content entity; existing projects and showcase items)
+
+1. **Real approved projects** → "Newly Launched Properties", project cards with only approved facts (developer when
+   verified, status, approved price), View all projects; fewer than three → a "More launches are on the way" card.
+2. **No real launch, published illustrative "project style" showcase items** → "Explore Project Styles", every card
+   labelled "Illustrative example", no status/possession/RERA/developer/price, Register interest (general CRM lead), a
+   closing "Discover upcoming opportunities" card and the line "Representative images of project styles only, not
+   specific launches". These items then leave the lower "Explore property styles" section (no duplicates).
+3. **Neither** → the "Discover upcoming opportunities" panel with the inline Register-your-interest form (unchanged).
+
+Production today is mode 3: the local demo showcase items are sample data (`is_sample`) and hidden. Mode 2 was reviewed by
+temporarily un-flagging the four local project-style demo items; the flag was restored and verified afterwards (9 sample
+items, public showcase API empty in production visibility).
+
+## Screenshots (`docs/ui-review/fold/`)
+
+| | Before | After |
+|---|---|---|
+| 1920×1200 first screen | [before](ui-review/fold/before-1920-first-screen.jpg) | [mode 2 carousel](ui-review/fold/final-styles-1920-first-screen.jpg) |
+| 1440×900 first screen | [before](ui-review/fold/before-1440-first-screen.jpg) | [mode 2](ui-review/fold/final-styles-1440-first-screen.jpg) · [mode 3 Discover](ui-review/fold/final-discover-1440-first-screen.jpg) |
+| 390×844 first screen | [before](ui-review/fold/before-390-first-screen.jpg) | [mode 2](ui-review/fold/final-styles-390-first-screen.jpg) · [after a swipe](ui-review/fold/final-styles-390-after-swipe.jpg) · [mode 3](ui-review/fold/final-discover-390-first-screen.jpg) |
+
+At 1440×900 and 1920×1200 the New launches carousel now occupies the lower part of the first screen, as in the reference
+site's first-screen hierarchy; previously it started below the fold at every desktop size except 1920×1200.
+
+## Not changed
+
+Other homepage sections, the mobile hero (only 12 px less top padding), the finder fields and their API, CRM enquiry
+flow, showcase CMS, authentication. The Claude-in-Chrome extension is not connected in this session; the local result
+is shown in the desktop app's browser pane and these Playwright captures of the same local site.
+
+---
+
+# Round 5 — brand replacement: UNAVORA ANANT REAL ESTATE (2026-11-13, uncommitted)
+
+Owner brief "Replace old UNAVORA logo and brand name everywhere". Brand rules: BRAND_GUIDELINES.md. Decision D-044.
+
+| Area | Change |
+|---|---|
+| Logo | New horizontal UA logo from `assets/brand/source/unavora-anant-real-estate-primary.png` (unaltered); exports by `assets/brand/make_brand_assets.py`; header 48–56 px (full logo from 640 px; monogram + text lockup on phones), footer/staff header on a light plate, About |
+| Browser / sharing | `favicon.ico` (16/32/48, monogram), `icon.png` 512, `apple-icon.png` 180, `manifest.webmanifest` (192/512 icons), `opengraph-image.png` + `twitter-image.png` 1200×630; every public page now carries `og:image` and a large Twitter card (previously the page metadata dropped the default image) |
+| Text | Site title "UNAVORA ANANT REAL ESTATE — INVEST IN A BETTER LIVING" (home, no duplicated brand), `| UNAVORA ANANT REAL ESTATE` elsewhere; hero eyebrow = brand, headline = tagline; About, footer, associations, structured data (`Organization`, article publisher), staff header and footer, Hindi transliteration |
+| Data | V20: seeded `company.display_name` and `company.tagline` updated (only if unchanged), `company.website` recorded unverified; `company.legal_name` untouched |
+| Not present (nothing to change) | e-mail templates, WhatsApp templates (mock OTP only), PDF templates — designed in COMMUNICATION_SYSTEM_DESIGN.md with the new sender name |
+| Archive | Old UAI logo sheet, exports, icons and generator in `assets/brand/archive/uai-2026-11-08/` (generator disabled) |
+
+Verification (local standalone build, Playwright Chromium): 10 routes (home en/hi, listing, detail, New launches, project,
+About, Contact, account sign-in, staff login) plus signed-in customer account and director CMS, at 320/390/430/768/1440/1920
+px — 0 pages with old brand text, old metadata or old logo files; 0 old-logo requests; 0 distorted or broken logos; 0 page
+overflow. `brand.test.ts` fails the unit tests if old names, taglines or logo filenames return to the website source.
+Screenshots: `docs/ui-review/brand/`.

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Media } from "@/lib/api";
+import { SafeImage } from "./SafeImage";
 
 export type GalleryLabels = {
   title: string; open: string; close: string; prev: string; next: string; of: string; swipe: string; kinds: Record<string, string>;
@@ -34,8 +35,7 @@ export function Gallery({ images, title, labels }: { images: Media[]; title: str
           {images.map((m, i) => (
             <li key={m.url} className="relative aspect-[4/3] w-full shrink-0 snap-center bg-sand">
               <button type="button" onClick={() => setOpen(i)} className="block size-full" aria-label={`${labels.open}: ${alt(m, i)}`}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={m.url} alt={alt(m, i)} loading={i === 0 ? "eager" : "lazy"} fetchPriority={i === 0 ? "high" : "auto"} className="size-full object-cover" />
+                <SafeImage src={m.url} alt={alt(m, i)} fill sizes="100vw" priority={i === 0} loading={i === 0 ? undefined : "lazy"} className="object-cover" />
               </button>
               <KindTag m={m} labels={labels} />
             </li>
@@ -53,9 +53,8 @@ export function Gallery({ images, title, labels }: { images: Media[]; title: str
         {images.slice(0, 3).map((m, i) => (
           <div key={m.url} className={`relative overflow-hidden bg-sand ${i === 0 ? "sm:col-span-3 sm:row-span-2 sm:min-h-[420px]" : "aspect-[4/3]"}`}>
             <button type="button" onClick={() => setOpen(i)} className="absolute inset-0 block" aria-label={`${labels.open}: ${alt(m, i)}`}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={m.url} alt={alt(m, i)} loading={i === 0 ? "eager" : "lazy"} fetchPriority={i === 0 ? "high" : "auto"}
-                className="size-full object-cover transition-transform duration-500 hover:scale-[1.02]" />
+              <SafeImage src={m.url} alt={alt(m, i)} fill priority={i === 0} loading={i === 0 ? undefined : "lazy"}
+                sizes={i === 0 ? "(min-width: 1024px) 50vw, 75vw" : "(min-width: 1024px) 17vw, 25vw"} className="object-cover transition-transform duration-500 hover:scale-[1.02]" />
             </button>
             <KindTag m={m} labels={labels} />
             {i === 2 && images.length > 3 && (

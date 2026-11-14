@@ -41,8 +41,8 @@ export default async function ContactPage({ params, searchParams }: Props) {
     <>
       <PageHero lang={lang} home={s.detail.home} breadcrumbLabel={s.detail.breadcrumb} crumbs={[{ label: s.contact.title }]}
         eyebrow={s.cta.eyebrow} title={s.contact.title} sub={s.contact.sub} />
-      <div className="mx-auto grid max-w-7xl gap-12 px-4 py-14 sm:px-6 lg:grid-cols-[1.2fr_1fr] lg:gap-20 lg:px-8 lg:py-20">
-        <div id="enquiry" className="bg-white p-6 shadow-[var(--shadow-card)] sm:p-10">
+      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-12 px-4 py-14 sm:px-6 lg:grid-cols-[1.2fr_1fr] lg:gap-20 lg:px-8 lg:py-20">
+        <div id="enquiry" className="min-w-0 bg-white p-6 shadow-[var(--shadow-card)] sm:p-10">
           <EnquiryForm lang={lang} t={t} f={s.form} variant="full" title={s.form.title} id="contact-enquiry"
             {...(showcase ? { showcaseId: showcase.id, locationLabel: x.showcase.location, about: x.showcase.about.replace("{t}", showcase.title) } : {})}
             properties={listing.items.map((p) => ({ id: p.id, title: p.title }))} propertyLabels={{ label: x.contact.property, none: x.contact.none }} />

@@ -168,7 +168,7 @@ test("director: project, listing with approved photo, conversion, partner lead, 
 test("A. new launch: homepage section -> project detail -> enquiry", async ({ page }) => {
   test.skip(mobile(), "uses the project published by the desktop run");
   await page.goto("/en");
-  const section = page.getByRole("region", { name: "Newly launched projects" });
+  const section = page.getByRole("region", { name: "Newly Launched Properties" });
   await expect(section).toBeVisible();
   await section.getByRole("link", { name: project.name, exact: true }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(project.name);

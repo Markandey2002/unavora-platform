@@ -5,6 +5,7 @@ import { isLang } from "@/i18n/dictionaries";
 import { getSiteDictionary } from "@/i18n/site";
 import { getSiteBlocks } from "@/lib/api";
 import { pageMeta } from "@/lib/seo";
+import { BRAND, brandName } from "@/lib/brand";
 
 type Props = { params: Promise<{ lang: string }> };
 
@@ -14,7 +15,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const s = getSiteDictionary(lang);
   const blocks = await getSiteBlocks(lang);
   const seo = blocks.seo["/"];
-  return pageMeta(lang, "", seo?.title ?? s.hero.eyebrow, seo?.description ?? s.hero.sub);
+  // Home: "<brand> — <tagline>" without the layout's "| brand" suffix (no duplicated brand in the tab title)
+  const meta = pageMeta(lang, "", seo?.title ?? `${brandName(lang)} — ${BRAND.tagline}`, seo?.description ?? s.hero.sub);
+  return { ...meta, title: { absolute: String(meta.title) } };
 }
 
 /** Public homepage: published CMS blocks only (drafts are visible in the staff preview). */

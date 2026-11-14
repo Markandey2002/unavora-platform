@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 export type NavItem = { label: string; href: string; children?: { label: string; href: string; note?: string }[] };
 
@@ -50,7 +51,9 @@ export function MobileNav({ items, labels, extra }: {
         className="flex size-11 items-center justify-center text-navy xl:hidden" aria-label={labels.open}>
         <svg viewBox="0 0 20 20" className="size-6" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden><path d="M3 6h14M3 10h14M7 14h10" /></svg>
       </button>
-      {open && (
+      {/* Portal to <body>: the sticky header uses backdrop-filter, which makes it the containing block for fixed
+          descendants — rendered inside it, the full-screen drawer was clipped to the 72 px header. */}
+      {open && createPortal(
         <div className="fixed inset-0 z-50 xl:hidden">
           <button type="button" aria-label={labels.close} tabIndex={-1} onClick={() => setOpen(false)} className="absolute inset-0 bg-navy/50 backdrop-blur-sm" />
           <div ref={panel} id="mobile-nav" role="dialog" aria-modal="true" aria-label={labels.title}
@@ -79,7 +82,8 @@ export function MobileNav({ items, labels, extra }: {
             </nav>
             <div className="space-y-3 border-t border-navy/10 px-5 py-5">{extra}</div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );

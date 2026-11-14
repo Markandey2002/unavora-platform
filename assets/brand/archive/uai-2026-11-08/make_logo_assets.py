@@ -1,4 +1,7 @@
-"""Derive website logo files from the official UNAVORA logo sheet WITHOUT altering the artwork.
+"""ARCHIVED 2026-11-13: superseded by assets/brand/make_brand_assets.py (UNAVORA ANANT REAL ESTATE logo).
+Kept for history only; it refuses to run so the old UAI logo cannot reach the website again.
+
+Derive website logo files from the official UNAVORA logo sheet WITHOUT altering the artwork.
 
 Only three operations are applied: crop to each logo's measured bounding box (plus a small margin), removal of the
 sheet's near-white background by colour-to-alpha (on a light background the result is pixel-identical to the
@@ -7,7 +10,10 @@ original), and proportional scaling for icon sizes. No redrawing, recolouring or
     python -I assets/brand/make_logo_assets.py
 Source: assets/brand/unavora-logo-sheet-original.jpg (official, final; supplied 2026-11-08).
 """
+import sys
 from pathlib import Path
+
+sys.exit("ARCHIVED: the UAI logo is superseded; use assets/brand/make_brand_assets.py")
 
 from PIL import Image
 

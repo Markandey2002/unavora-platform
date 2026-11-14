@@ -1,3 +1,4 @@
+import { BRAND } from "@/lib/brand";
 import type { Metadata } from "next";
 
 /** Public origin of the website. SITE_URL is set per environment; local default for development. */
@@ -23,10 +24,12 @@ export function pageMeta(lang: string, path: string, title: string, description:
     metadataBase: new URL(siteUrl()),
     alternates: { canonical: url(lang), languages },
     openGraph: {
-      type: opts.ogType ?? "website", url: url(lang), title, description, siteName: "UNAVORA ANANT INFRA",
+      type: opts.ogType ?? "website", url: url(lang), title, description, siteName: BRAND.name.en,
       locale: lang === "hi" ? "hi_IN" : "en_IN", alternateLocale: lang === "hi" ? ["en_IN"] : ["hi_IN"],
+      // brand sharing image (app/opengraph-image.png); a page's own metadata may replace it
+      images: [{ url: "/opengraph-image.png", width: 1200, height: 630, alt: `${BRAND.name.en} — ${BRAND.tagline}` }],
     },
-    twitter: { card: "summary", title, description },
+    twitter: { card: "summary_large_image", title, description, images: ["/twitter-image.png"] },
     robots: opts.noindex ? { index: false, follow: true } : undefined,
   };
 }

@@ -1,3 +1,4 @@
+import { BRAND } from "@/lib/brand";
 export const languages = ["en", "hi"] as const;
 export type Lang = (typeof languages)[number];
 
@@ -8,8 +9,8 @@ export function isLang(v: string): v is Lang {
 // Hindi strings are DRAFTS pending native-speaker review (PENDING_BUSINESS_CONFIRMATIONS.md).
 const dict = {
   en: {
-    brand: "UNAVORA ANANT INFRA",
-    tagline: "Building Trust. Creating Value.",
+    brand: BRAND.name.en,
+    tagline: BRAND.tagline,
     heroTitle: "Find your next property with confidence",
     heroSub: "Residential, commercial and plots across Noida, Lucknow and Prayagraj.",
     browse: "Browse properties",
@@ -82,8 +83,8 @@ const dict = {
     verifyFirst: "Verify your WhatsApp number to send requests from your account.",
   },
   hi: {
-    brand: "यूनावोरा अनंत इन्फ्रा",
-    tagline: "भरोसा बनाना। मूल्य रचना।",
+    brand: BRAND.name.hi,
+    tagline: BRAND.tagline,
     heroTitle: "भरोसे के साथ अपनी अगली संपत्ति खोजें",
     heroSub: "नोएडा, लखनऊ और प्रयागराज में आवासीय, व्यावसायिक और प्लॉट।",
     browse: "संपत्तियाँ देखें",

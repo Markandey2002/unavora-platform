@@ -9,7 +9,7 @@ Nothing below is guessed. Until confirmed, the platform shows the item as unveri
 | 3 | Full addresses + PIN for Noida (registered), Lucknow, Prayagraj; map pins | Contact page, schema.org | `company_offices.full_address` NULL; cities only |
 | 4 | RERA applicability and number(s) | Legal claim; never shown without evidence | Not displayed; `rera_verified_at` required by schema |
 | 5 | ~~Business email~~ **Resolved 2026-11-12: `info@anantinfrarealty.com` verified** (owner confirmed) | Enquiry notifications | Stored verified; shown on the site |
-| 6 | Phone **verified 2026-11-12: +91 83183 77108** (displayed "+91 83183 77108", `tel:+918318377108`). Still open: WhatsApp Business number and account | WhatsApp is disabled until an approved test provider exists | `features.whatsapp-automation=false`; no WhatsApp link until a number is verified |
+| 6 | Phone **verified 2026-11-14: +91 91941 19150** (displayed "+91 91941 19150", `tel:+919194119150`; replaces +91 83183 77108). Still open: WhatsApp Business number and account | WhatsApp is disabled until an approved test provider exists | `features.whatsapp-automation=false`; no WhatsApp link until a number is verified |
 | 7 | Real property inventory, photos, prices, ownership proofs | No fake listings allowed | Synthetic `[SAMPLE]` data, local/test only. Approved interim: illustrative showcase (type B, labelled, director-approved) |
 | 8 | Hindi copy review by a native speaker | Quality/trust | All Hindi strings are DRAFT; `review_status='draft'` |
 | 9 | Privacy notice, terms, consent wording, retention periods | DPDP Act obligations; enquiry consent | Placeholder `privacy-notice-DRAFT-0` |

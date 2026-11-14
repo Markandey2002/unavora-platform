@@ -63,3 +63,8 @@ unavora:
   otp:
     whatsapp.mode: ${WHATSAPP_OTP_MODE:disabled}
     secret: ${OTP_HMAC_SECRET:}
+# OpenAPI / Swagger UI: OFF in every environment. Only application-local.yml switches it on (and OpenApiConfig is
+# @Profile("local")), so staging/production never publish the API description or an open Swagger UI.
+springdoc:
+  api-docs.enabled: false
+  swagger-ui.enabled: false

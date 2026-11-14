@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
 import { signIn, signOut } from "./staff-helpers";
 
+const PNG = Buffer.from("89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d4944415478da63f8ffff3f0005fe02fea7d6a2c80000000049454e44ae426082", "hex");
+
 // CRM → Website content → Showcase: the director creates an illustrative item, publishes it, edits Hindi text, replaces
 // the image, links a real published listing and finally archives it (e2e tests archive what they publish).
 test("director replaces showcase content through the CMS without code changes", async ({ page }) => {
@@ -8,6 +10,23 @@ test("director replaces showcase content through the CMS without code changes", 
   test.setTimeout(240_000);
   const title = `E2E showcase ${Date.now()}`;
   await signIn(page, "director");
+
+  // 0. two licensed images through the image library (scan -> licence -> director approval); CI starts with none
+  const alts = [`${title} image A`, `${title} image B`];
+  for (const alt of alts) {
+    await page.goto("/en/staff/content/library");
+    const up = page.getByTestId("library-upload");
+    await up.getByLabel(/^File/).setInputFiles({ name: "showcase.png", mimeType: "image/png", buffer: PNG });
+    await up.locator("select[name=kind]").selectOption("representative");
+    await up.getByLabel(/^Alt text/).fill(alt);
+    await up.getByLabel("Photographer / source").fill("E2E test image");
+    await up.getByLabel("Licence / permission").fill("Test fixture (not public)");
+    await up.getByRole("button", { name: "Upload photo" }).click();
+    await expect(page.getByRole("status")).toBeVisible();
+    const item = page.getByTestId("library-item").filter({ has: page.locator(`input[name=altEn][value="${alt}"]`) });
+    await item.getByRole("button", { name: "Approve for website" }).click();
+    await expect(page.getByRole("status")).toBeVisible();
+  }
 
   await page.goto("/en/staff/content");
   await page.getByRole("link", { name: /Showcase/ }).click();
@@ -26,8 +45,8 @@ test("director replaces showcase content through the CMS without code changes", 
   // 2. pick an approved image, set position; publishing without one is refused
   await page.getByRole("button", { name: "Publish" }).click();
   await expect(page.getByTestId("form-error")).toContainText("approved image");
-  const approved = page.getByTestId("showcase-images").locator("label").filter({ hasNotText: "not approved" });
-  await approved.first().click();
+  const picker = page.getByTestId("showcase-images").locator("label");
+  await picker.filter({ hasText: alts[0] }).click();
   await page.getByLabel("Position (lower comes first)").fill("0");
   await page.getByRole("button", { name: "Save" }).click();
   await expect(page.getByRole("status")).toBeVisible();
@@ -44,7 +63,7 @@ test("director replaces showcase content through the CMS without code changes", 
   // 4. Hindi text + replace the image (director edit stays live)
   await page.goto(editor);
   await page.getByLabel("Title (Hindi, optional)").fill(`उदाहरण ${title}`);
-  if ((await approved.count()) > 1) await approved.nth(1).click();
+  await picker.filter({ hasText: alts[1] }).click();
   await page.getByRole("button", { name: "Save" }).click();
   await expect(page.getByTestId("showcase-status")).toHaveText("Published");
   // A page pre-rendered at build time can serve its previous version until its 60-second refresh (known limitation).

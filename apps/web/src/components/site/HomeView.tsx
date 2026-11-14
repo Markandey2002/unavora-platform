@@ -6,7 +6,8 @@ import { EnquiryForm } from "@/components/EnquiryForm";
 import { PropertyCard } from "@/components/PropertyCard";
 import { HeroArt, PropertyArt, seedOf } from "@/components/site/Art";
 import { ProjectCard } from "@/components/site/ProjectCard";
-import { ShowcaseSection } from "@/components/site/ShowcaseSection";
+import { ShowcaseCard, ShowcaseSection } from "@/components/site/ShowcaseSection";
+import { Carousel } from "@/components/site/Carousel";
 import { HeroSearch, SearchFields } from "@/components/site/SearchPanel";
 import { FinderSheet } from "@/components/site/SearchSheet";
 import { Arrow, btn, Eyebrow, Icon, RepresentativeTag, SectionHeading } from "@/components/site/ui";
@@ -17,6 +18,7 @@ import { getExtraDictionary } from "@/i18n/extra";
 import { ArticleCard } from "@/components/site/ArticleCard";
 import { LiteYouTube } from "@/components/site/InsightsParts";
 import { photos } from "@/lib/assets";
+import { BRAND } from "@/lib/brand";
 import { jsonLd, siteUrl } from "@/lib/seo";
 import { cityLabel, citySlug, contactFrom, groupByCity, whatsappHref, formatPhone } from "@/lib/site";
 
@@ -46,6 +48,9 @@ export async function HomeView({ lang, blocks, preview = false }: { lang: Lang; 
     getArticles(lang, { kind: "article", limit: 3 }), getArticles(lang, { kind: "video", limit: 2 }), getTestimonials(lang),
   ]);
   const cities = groupByCity(locations);
+  // Illustrative "project style" items fill the New launches carousel only while no real launch is published.
+  const projectStyles = launches.items.length === 0 ? showcase.filter((i) => i.category === "project_style") : [];
+  const styles = showcase.filter((i) => !projectStyles.includes(i));
   const projectStyle = showcase.find((i) => i.category === "project_style");
   const discoverPhoto = projectStyle ? { src: projectStyle.image.url, alt: projectStyle.image.alt }
     : photos.commercial ? { src: photos.commercial.src, alt: lang === "hi" ? photos.commercial.alt.hi : photos.commercial.alt.en } : null;
@@ -73,8 +78,8 @@ export async function HomeView({ lang, blocks, preview = false }: { lang: Lang; 
 
   const org = {
     "@context": "https://schema.org", "@type": "RealEstateAgent",
-    name: company.settings.display_name ?? "UNAVORA ANANT INFRA", url: `${siteUrl()}/${lang}`,
-    logo: `${siteUrl()}/brand/unavora-logo-stacked.png`,
+    name: company.settings.display_name ?? BRAND.name.en, url: `${siteUrl()}/${lang}`,
+    logo: `${siteUrl()}${BRAND.logo.onCream.src}`,
     ...(company.settings.tagline ? { slogan: company.settings.tagline } : {}),
     ...(contact.phone ? { telephone: contact.phone } : {}), ...(contact.email ? { email: contact.email } : {}),
     areaServed: cities.map((c) => ({ "@type": "City", name: c.city })),
@@ -83,19 +88,19 @@ export async function HomeView({ lang, blocks, preview = false }: { lang: Lang; 
   const sections: Record<string, React.ReactNode> = {
     launches: (
       <>
-      {/* 4. Newly launched projects: directly under the search. Approved projects only; honest empty state otherwise. */}
-      <section aria-labelledby="launch-title" className="py-16 lg:py-24">
+      {/* 4. New launches directly under the hero + finder, as a horizontal carousel. Three honest modes:
+          real approved projects -> project cards; otherwise published illustrative "project style" showcase items
+          (labelled, no launch facts, Register your interest); otherwise the Discover upcoming opportunities panel. */}
+      <section aria-labelledby="launch-title" className="pb-14 pt-10 sm:pt-12 lg:pb-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-wrap items-end justify-between gap-6">
-            <SectionHeading id="launch-title" eyebrow={x.launch.eyebrow} title={x.launch.title} sub={x.launch.sub} />
-            {launches.total > 0 && <span className="hidden sm:inline-flex"><Link href={`/${lang}/projects`} className={btn.outline}>{s.launches.viewAll}</Link></span>}
-          </div>
           {launches.items.length > 0 ? (
             <>
-              <ul aria-label={x.launch.title} className="-mx-4 mt-10 flex snap-x snap-mandatory gap-5 overflow-x-auto px-4 pb-4 sm:mx-0 sm:grid sm:snap-none sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-3 [&>li]:w-[85%] [&>li]:shrink-0 [&>li]:snap-start sm:[&>li]:w-auto">
+              <Carousel label={x.launch.title} prev={x.launch.prevCards} next={x.launch.nextCards} goTo={x.launch.goTo} pause={x.launch.pauseAuto} play={x.launch.playAuto} autoplay testId="launch-carousel"
+                header={<LaunchHeading id="launch-title" eyebrow={x.launch.eyebrow} title={x.launch.title} />}
+                extra={launches.total > 0 ? <Link href={`/${lang}/projects`} className={`${btn.text} hidden whitespace-nowrap sm:inline-flex`}>{s.launches.viewAll}<Arrow className="size-4" /></Link> : null}>
                 {launches.items.map((p, i) => <ProjectCard key={p.id} p={p} lang={lang} s={s} x={x} eager={i === 0} />)}
                 {launches.items.length < 3 && (
-                  <li className="hidden flex-col justify-between border border-dashed border-navy/20 p-8 sm:flex">
+                  <li className="flex flex-col justify-between border border-dashed border-navy/20 p-8">
                     <div>
                       <p className="font-display text-2xl font-semibold">{x.launch.moreTitle}</p>
                       <p className="mt-3 text-sm leading-relaxed text-muted">{x.launch.moreNote}</p>
@@ -103,13 +108,30 @@ export async function HomeView({ lang, blocks, preview = false }: { lang: Lang; 
                     <Link href={`/${lang}/projects#project-interest`} className={`${btn.outline} mt-8 self-start`}>{x.launch.emptyCta}</Link>
                   </li>
                 )}
-              </ul>
-              <div className="mt-6 sm:hidden"><Link href={`/${lang}/projects`} className={`${btn.outline} w-full`}>{s.launches.viewAll}</Link></div>
+              </Carousel>
+              <div className="mt-4 sm:hidden"><Link href={`/${lang}/projects`} className={`${btn.outline} w-full`}>{s.launches.viewAll}</Link></div>
+            </>
+          ) : projectStyles.length > 0 ? (
+            <>
+              <Carousel label={x.showcase.projectStylesTitle} prev={x.launch.prevCards} next={x.launch.nextCards} goTo={x.launch.goTo} pause={x.launch.pauseAuto} play={x.launch.playAuto} autoplay testId="launch-carousel"
+                header={<LaunchHeading id="launch-title" eyebrow={x.showcase.discoverEyebrow} title={x.showcase.projectStylesTitle} />}>
+                {projectStyles.map((it) => <ShowcaseCard key={it.id} lang={lang} it={it} sc={x.showcase} />)}
+                <li className="flex flex-col justify-between bg-navy p-8 text-ivory" data-testid="launch-register">
+                  <div>
+                    <p className="eyebrow text-gold">{x.showcase.discoverEyebrow}</p>
+                    <p className="font-display mt-3 text-2xl font-semibold">{x.showcase.discoverTitle}</p>
+                    <p className="mt-3 text-sm leading-relaxed text-ivory/75">{x.showcase.discoverNote}</p>
+                  </div>
+                  <Link href={`/${lang}/projects#project-interest`} className={`${btn.gold} mt-8 self-start`}>{x.launch.emptyCta}</Link>
+                </li>
+              </Carousel>
+              <p className="mt-3 text-xs text-muted" data-testid="launch-disclosure">{x.showcase.projectStylesNote}</p>
             </>
           ) : (
-            // No approved real launch: no fictional project, a premium "Discover upcoming opportunities" panel with a
-            // representative image and Register Your Interest (general project-interest lead, no project id).
-            <div className="mt-10 grid overflow-hidden bg-navy text-ivory lg:grid-cols-[1.1fr_1fr]" data-testid="launch-discover">
+            <>
+            <LaunchHeading id="launch-title" eyebrow={x.launch.eyebrow} title={x.launch.title} />
+            {/* No approved real launch and no showcase: no fictional project; Discover panel with Register your interest. */}
+            <div className="mt-6 grid overflow-hidden bg-navy text-ivory lg:grid-cols-[1.1fr_1fr]" data-testid="launch-discover">
               <div className="relative min-h-64 lg:min-h-full">
                 {discoverPhoto && <Image src={discoverPhoto.src} alt={discoverPhoto.alt} fill sizes="(min-width:1024px) 55vw, 100vw" className="object-cover" />}
                 <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-navy/80 via-navy/20 to-transparent lg:bg-gradient-to-r lg:from-transparent lg:via-transparent lg:to-navy/40" />
@@ -125,6 +147,7 @@ export async function HomeView({ lang, blocks, preview = false }: { lang: Lang; 
                 </div>
               </div>
             </div>
+            </>
           )}
         </div>
       </section>
@@ -135,21 +158,17 @@ export async function HomeView({ lang, blocks, preview = false }: { lang: Lang; 
       {/* 5. Featured properties (director-chosen first, then newest) */}
       <section aria-labelledby="featured-title" className="bg-sand/60">
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
-          <div className="flex flex-wrap items-end justify-between gap-6">
-            <SectionHeading id="featured-title" eyebrow={s.featured.eyebrow} title={s.featured.title} sub={s.featured.sub} />
-            <span className="hidden sm:inline-flex"><Link href={`/${lang}/properties`} className={btn.outline}>{s.featured.viewAll}</Link></span>
-          </div>
-          {(
-            <ul className="-mx-4 mt-10 flex snap-x snap-mandatory gap-5 overflow-x-auto px-4 pb-4 sm:mx-0 sm:grid sm:snap-none sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-3 [&>li]:w-[85%] [&>li]:shrink-0 [&>li]:snap-start sm:[&>li]:w-auto">
-              {featured.items.map((p) => <PropertyCard key={p.id} p={p} lang={lang} t={t} s={s} />)}
-            </ul>
-          )}
+          <Carousel label={s.featured.title} prev={x.launch.prevCards} next={x.launch.nextCards} goTo={x.launch.goTo} pause={x.launch.pauseAuto} play={x.launch.playAuto} autoplay testId="featured-carousel"
+            header={<SectionHeading id="featured-title" eyebrow={s.featured.eyebrow} title={s.featured.title} sub={s.featured.sub} />}
+            extra={<Link href={`/${lang}/properties`} className={`${btn.text} hidden whitespace-nowrap sm:inline-flex`}>{s.featured.viewAll}<Arrow className="size-4" /></Link>}>
+            {featured.items.map((p) => <PropertyCard key={p.id} p={p} lang={lang} t={t} s={s} />)}
+          </Carousel>
           <div className="mt-6 sm:hidden"><Link href={`/${lang}/properties`} className={`${btn.outline} w-full`}>{s.featured.viewAll}</Link></div>
         </div>
       </section>
       </>
     ),
-    showcase: showcase.length === 0 ? null : <ShowcaseSection lang={lang} items={showcase} x={x} />,
+    showcase: styles.length === 0 ? null : <ShowcaseSection lang={lang} items={styles} x={x} />,
     categories: (
       <>
       {/* 6. Categories */}
@@ -223,15 +242,18 @@ export async function HomeView({ lang, blocks, preview = false }: { lang: Lang; 
     why: (
       <>
       {/* G. Why UNAVORA */}
-      <section aria-labelledby="why-title" className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
+      {/* phones: compact numbered rows (number beside the title, tighter padding); body text keeps its size */}
+      <section aria-labelledby="why-title" className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-20 lg:px-8 lg:py-28">
         <SectionHeading id="why-title" eyebrow={s.why.eyebrow} title={s.why.title} center />
-        <ul className="mt-14 grid gap-px bg-navy/10 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="mt-8 grid gap-px bg-navy/10 sm:mt-14 sm:grid-cols-2 lg:grid-cols-3">
           {s.why.items.map((w, i) => (
-            <li key={w.title} className="group bg-ivory p-8 transition-colors hover:bg-white">
-              <span className="font-display text-sm font-semibold text-gold-700">0{i + 1}</span>
-              <h3 className="font-display mt-4 text-2xl font-semibold">{w.title}</h3>
-              <p className="mt-3 text-sm leading-relaxed text-muted">{w.body}</p>
-              <span aria-hidden className="mt-6 block h-px w-10 bg-gold transition-all duration-300 group-hover:w-20" />
+            <li key={w.title} className="group grid grid-cols-[auto_1fr] gap-x-4 bg-ivory px-4 py-5 transition-colors hover:bg-white sm:block sm:p-8">
+              <span className="font-display pt-1 text-sm font-semibold text-gold-700">0{i + 1}</span>
+              <div>
+                <h3 className="font-display text-xl font-semibold sm:mt-4 sm:text-2xl">{w.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted sm:mt-3">{w.body}</p>
+              </div>
+              <span aria-hidden className="mt-6 hidden h-px w-10 bg-gold transition-all duration-300 group-hover:w-20 sm:block" />
             </li>
           ))}
         </ul>
@@ -431,14 +453,14 @@ export async function HomeView({ lang, blocks, preview = false }: { lang: Lang; 
           <div className="absolute inset-0 bg-gradient-to-r from-navy/90 via-navy/60 to-navy/20 md:from-navy md:via-navy/60 md:to-transparent" />
           <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-navy/90 via-navy/40 to-transparent" />
         </div>
-        <div className="mx-auto max-w-7xl px-4 pb-7 pt-9 sm:px-6 sm:pb-40 sm:pt-20 lg:px-8 lg:pb-44 lg:pt-24">
-          <div className="max-w-xl lg:max-w-2xl">
-            <div className="rise"><Eyebrow light>{hero?.eyebrow ?? company.settings.tagline ?? s.hero.eyebrow}</Eyebrow></div>
-            <h1 id="hero-title" className="rise rise-2 font-display mt-4 text-[2.1rem] font-semibold leading-[1.04] min-[400px]:text-[2.4rem] sm:mt-6 sm:text-6xl lg:text-[4.5rem]">
+        <div className="mx-auto max-w-7xl px-4 pb-6 pt-7 sm:px-6 sm:pb-28 sm:pt-12 lg:px-8 lg:pb-[5.5rem] lg:pt-10">
+          <div className="max-w-xl lg:max-w-4xl">
+            <div className="rise"><Eyebrow light>{hero?.eyebrow ?? company.settings.display_name ?? s.hero.eyebrow}</Eyebrow></div>
+            <h1 id="hero-title" className="rise rise-2 font-display mt-4 text-[2.1rem] font-semibold leading-[1.04] min-[400px]:text-[2.4rem] sm:mt-4 sm:text-5xl lg:max-w-3xl lg:text-[3.5rem]">
               {hero?.title ?? s.hero.title}
             </h1>
-            <p className="rise rise-3 mt-4 max-w-md text-[0.95rem] leading-relaxed text-ivory/85 sm:mt-6 sm:max-w-lg sm:text-lg">{hero?.sub ?? s.hero.sub}</p>
-            <div className="rise rise-3 mt-6 grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 sm:mt-9 sm:flex">
+            <p className="rise rise-3 mt-4 max-w-md text-[0.95rem] leading-relaxed text-ivory/85 sm:max-w-xl sm:text-lg lg:max-w-4xl">{hero?.sub ?? s.hero.sub}</p>
+            <div className="rise rise-3 mt-6 grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 sm:mt-7 sm:flex">
               <Link href={`/${lang}/properties`} className={`${btn.gold} !px-3 !text-[0.72rem] !tracking-[0.1em] sm:!px-6 sm:!text-[0.8rem] sm:!tracking-[0.16em]`}>{hero?.primaryLabel ?? s.hero.explore}<Arrow className="hidden size-4 sm:block" /></Link>
               <Link href={`/${lang}/contact`} className={`${btn.outlineLight} !px-3 !text-[0.72rem] !tracking-[0.1em] sm:!px-6 sm:!text-[0.8rem] sm:!tracking-[0.16em]`}>{hero?.secondaryLabel ?? s.hero.contact}</Link>
             </div>
@@ -459,12 +481,22 @@ export async function HomeView({ lang, blocks, preview = false }: { lang: Lang; 
       </section>
 
       {/* C. Property finder (tablet/desktop), overlapping the hero */}
-      <div className="relative z-10 mx-auto hidden max-w-7xl px-4 sm:-mt-28 sm:block sm:px-6 lg:-mt-32 lg:px-8">
+      <div className="relative z-10 mx-auto hidden max-w-7xl px-4 sm:-mt-20 sm:block sm:px-6 lg:-mt-16 lg:px-8">
         <HeroSearch lang={lang} s={s} cities={cities.map((c) => c.city)} />
       </div>
 
       {preview && <p role="status" className="sticky bottom-0 z-40 bg-red-800 px-4 py-2 text-center text-sm font-semibold text-white">{x.preview.banner}</p>}
       {order.filter((k) => !hidden.has(k) && sections[k]).map((k) => <Fragment key={k}>{sections[k]}</Fragment>)}
     </>
+  );
+}
+
+/** Compact heading for New launches (eyebrow + title, no sub-line) so the cards start within the first screen. */
+function LaunchHeading({ id, eyebrow, title }: { id: string; eyebrow: string; title: string }) {
+  return (
+    <div>
+      <Eyebrow>{eyebrow}</Eyebrow>
+      <h2 id={id} className="font-display mt-2 text-[1.75rem] font-semibold leading-tight text-navy sm:text-3xl lg:text-[2.25rem]">{title}</h2>
+    </div>
   );
 }

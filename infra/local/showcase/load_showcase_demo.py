@@ -42,6 +42,19 @@ ITEMS = [
      "New residential developments", "नई आवासीय परियोजनाएँ",
      "Contemporary towers and gated communities. Approved launches appear under New launches.",
      "आधुनिक टावर और गेटेड सोसायटी। स्वीकृत लॉन्च “नए लॉन्च” में दिखते हैं।", "register_interest"),
+    # more project styles for the New launches carousel (shown only while no real launch is published)
+    ("project_style", "1683402967722-917fdd774f30", "Walkway between residential towers with balconies", "बालकनी वाले आवासीय टावरों के बीच रास्ता",
+     "Gated residential communities", "गेटेड आवासीय सोसायटी",
+     "Landscaped communities with shared open spaces and everyday amenities.",
+     "साझा खुली जगह और रोज़मर्रा की सुविधाओं वाली हरी-भरी सोसायटी।", "register_interest"),
+    ("project_style", "1624204386084-dd8c05e32226", "Apartment building with glass balconies at dusk", "शाम के समय कांच की बालकनी वाली अपार्टमेंट इमारत",
+     "High-rise apartment towers", "ऊँचे अपार्टमेंट टावर",
+     "Vertical living with views, balconies and modern building services.",
+     "नज़ारों, बालकनी और आधुनिक भवन सेवाओं के साथ ऊँचाई पर रहना।", "register_interest"),
+    ("project_style", "1460317442991-0ec209397118", "Low-angle view of a modern apartment building", "आधुनिक अपार्टमेंट इमारत का नीचे से दृश्य",
+     "Mid-rise residential blocks", "मध्यम ऊँचाई की आवासीय इमारतें",
+     "Compact residential blocks close to schools, offices and markets.",
+     "स्कूल, दफ़्तर और बाज़ार के पास छोटे आवासीय ब्लॉक।", "register_interest"),
 ]
 
 H = {"Authorization": f"Bearer {flow.token('director')}"}

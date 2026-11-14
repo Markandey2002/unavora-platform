@@ -31,12 +31,12 @@ class PublicSiteIT extends IntegrationTestBase {
 
     @Test
     void companyEndpointReturnsOnlyVerifiedFacts() throws Exception {
-        // seed (V8): display name + tagline verified; phone, email, legal name, director, offices NOT verified
+        // seed (V8; brand V20; phone V21): display name, tagline and the owner-confirmed phone verified; email, legal name, director, offices NOT verified
         mvc.perform(get("/api/v1/public/company"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.settings.display_name").value("UNAVORA ANANT INFRA"))
-                .andExpect(jsonPath("$.settings.tagline").value("Building Trust. Creating Value."))
-                .andExpect(jsonPath("$.settings.phone").doesNotExist())
+                .andExpect(jsonPath("$.settings.display_name").value("UNAVORA ANANT REAL ESTATE"))
+                .andExpect(jsonPath("$.settings.tagline").value("INVEST IN A BETTER LIVING"))
+                .andExpect(jsonPath("$.settings.phone").value("+919194119150"))
                 .andExpect(jsonPath("$.settings.email").doesNotExist())
                 .andExpect(jsonPath("$.settings.legal_name").doesNotExist())
                 .andExpect(jsonPath("$.offices.length()").value(0))

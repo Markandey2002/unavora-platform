@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import "../globals.css";
 import { isLang, languages } from "@/i18n/dictionaries";
 import { siteUrl } from "@/lib/seo";
+import { BRAND } from "@/lib/brand";
 
 // Self-hosted at build time by next/font (no runtime request to Google). Devanagari faces are not preloaded:
 // browsers fetch them only when Hindi glyphs are on the page (unicode-range).
@@ -15,8 +16,10 @@ const bodyHi = Noto_Sans_Devanagari({ subsets: ["devanagari"], weight: ["400", "
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl()),
-  title: { default: "UNAVORA ANANT INFRA", template: "%s | UNAVORA ANANT INFRA" },
+  title: { default: `${BRAND.name.en} — ${BRAND.tagline}`, template: `%s | ${BRAND.name.en}` },
   description: "Residential, commercial and plot listings in Noida, Lucknow and Prayagraj.",
+  applicationName: BRAND.name.en,
+  appleWebApp: { title: BRAND.name.en },
 };
 
 export const viewport: Viewport = { themeColor: "#101d35" };

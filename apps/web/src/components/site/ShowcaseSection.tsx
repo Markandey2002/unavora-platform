@@ -1,10 +1,11 @@
 "use client";
 
-import Image from "next/image";
+import { SafeImage } from "@/components/site/SafeImage";
 import Link from "next/link";
 import { useState } from "react";
 import type { ExtraDictionary } from "@/i18n/extra";
 import type { ShowcaseItem } from "@/lib/api";
+import { Carousel } from "./Carousel";
 import { SectionHeading } from "./ui";
 
 /** Where "Browse listings" leads for each showcase category (real, approved listings only). */
@@ -45,7 +46,7 @@ export function ShowcaseSection({ lang, items, x }: { lang: string; items: Showc
           {sc.disclosure}
         </p>
         {present.length > 1 && (
-          <div role="group" aria-label={sc.title} className="-mx-4 mt-8 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
+          <div role="group" aria-label={sc.title} className="-mx-4 mt-8 flex gap-2 overflow-x-auto overscroll-x-contain px-4 pb-1 [scrollbar-width:none] [touch-action:pan-x_pan-y] sm:mx-0 sm:flex-wrap sm:px-0 [&::-webkit-scrollbar]:hidden">
             <button type="button" aria-pressed={cat === "all"} onClick={() => setCat("all")} className={chip(cat === "all")}>{sc.all}</button>
             {present.map((c) => (
               <button key={c} type="button" aria-pressed={cat === c} onClick={() => setCat(c)} className={`${chip(cat === c)} shrink-0`}>
@@ -54,9 +55,11 @@ export function ShowcaseSection({ lang, items, x }: { lang: string; items: Showc
             ))}
           </div>
         )}
-        <ul className="-mx-4 mt-8 flex snap-x snap-mandatory gap-5 overflow-x-auto px-4 pb-4 sm:mx-0 sm:grid sm:snap-none sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-3 [&>li]:w-[85%] [&>li]:shrink-0 [&>li]:snap-start sm:[&>li]:w-auto">
-          {shown.map((it) => <ShowcaseCard key={it.id} lang={lang} it={it} sc={sc} />)}
-        </ul>
+        <div className="mt-2">
+          <Carousel label={sc.title} prev={x.launch.prevCards} next={x.launch.nextCards} goTo={x.launch.goTo} pause={x.launch.pauseAuto} play={x.launch.playAuto} autoplay testId="showcase-carousel">
+            {shown.map((it) => <ShowcaseCard key={it.id} lang={lang} it={it} sc={sc} />)}
+          </Carousel>
+        </div>
       </div>
     </section>
   );
@@ -76,7 +79,7 @@ export function ShowcaseCard({ lang, it, sc, unoptimized = false, as = "li" }: {
     <Tag className="group flex flex-col bg-white shadow-[var(--shadow-card)]" data-testid="showcase-card" data-category={it.category}>
       <div className="relative aspect-[4/3] overflow-hidden bg-sand">
         {it.image.url && (
-          <Image src={it.image.url} alt={it.image.alt} fill unoptimized={unoptimized} sizes="(min-width:1024px) 33vw, (min-width:640px) 50vw, 85vw"
+          <SafeImage src={it.image.url} alt={it.image.alt} fill unoptimized={unoptimized} sizes="(min-width:1536px) 25vw, (min-width:1024px) 33vw, (min-width:640px) 50vw, 85vw"
             className="object-cover transition-transform duration-700 group-hover:scale-[1.03] motion-reduce:transition-none" />
         )}
         <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 bg-navy/80 px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-gold backdrop-blur-sm [:lang(hi)_&]:text-xs [:lang(hi)_&]:tracking-normal"

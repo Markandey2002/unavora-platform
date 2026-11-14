@@ -1,4 +1,9 @@
-# UNAVORA ANANT INFRA platform
+# UNAVORA ANANT REAL ESTATE platform
+
+Public brand **UNAVORA ANANT REAL ESTATE** — *INVEST IN A BETTER LIVING* — proposed production domain
+**https://uainfrarealestate.com** (not live yet). Brand rules, logo files and the legal-name distinction:
+[docs/BRAND_GUIDELINES.md](docs/BRAND_GUIDELINES.md). New developers start with
+[docs/DEVELOPER_ONBOARDING.md](docs/DEVELOPER_ONBOARDING.md).
 
 Next.js 16 (web + BFF) · Spring Boot 4 modular monolith (API) · PostgreSQL 17. Local-first: nothing here touches AWS,
 DNS, the existing WordPress site, live payments, real Google accounts or a real WhatsApp provider.
@@ -60,7 +65,7 @@ Set-Location C:\Users\Dell\UnnaVora\services\api
 ```powershell
 java -Xmx448m -jar target\unavora-api-0.1.0-SNAPSHOT.jar --spring.profiles.active=local
 ```
-Ready when the log shows `Started UnavoraApplication`. Flyway applies V1–V12 and the synthetic seed. The `local` profile uses the **mock** Google and **mock** WhatsApp adapters.
+Ready when the log shows `Started UnavoraApplication`. Flyway applies V1–V20 and the synthetic seed. The `local` profile uses the **mock** Google and **mock** WhatsApp adapters.
 
 ### 3. Web (terminal 2)
 Run Next directly with `node`. On this PC, `npm run …` picks up an old Node 18 from `C:\Users\Dell\node_modules\.bin` (see Troubleshooting).
@@ -155,7 +160,9 @@ docker compose stop keycloak
 
 Local staff users (Keycloak dev realm, synthetic): `director.local`, `employee1.local`, `employee2.local`, plus `outsider.local` (exists in Keycloak but is NOT invited to the CRM, for testing). The passwords are in `infra/local/keycloak/unavora-dev-realm.json` and must never be reused.
 
-**Public website configuration (web):** `SITE_URL` (public origin, used for canonical URLs, sitemap and Open Graph; default `http://localhost:3000`) and `SITE_INDEXABLE=true` only on the live production site (otherwise `robots.txt` blocks all crawling). Company phone, WhatsApp, email, offices and social links appear on the site only when marked verified in the database (`site_settings`, `company_offices`). Logo files are generated from the official sheet with `python -I assets\brand\make_logo_assets.py`; design review: [docs/UI_REVIEW.md](docs/UI_REVIEW.md).
+**API documentation (local only):** Swagger UI at http://localhost:8080/swagger-ui.html when the API runs with the `local` profile (four groups: public, staff & director, customer, BFF staff). Staff tokens: `python infra/local/scripts/staff_token.py employee1`. Full list, headers and examples: [docs/LOCAL_API_REFERENCE.md](docs/LOCAL_API_REFERENCE.md). Swagger is disabled in every other profile.
+
+**Public website configuration (web):** `SITE_URL` (public origin, used for canonical URLs, sitemap and Open Graph; default `http://localhost:3000`) and `SITE_INDEXABLE=true` only on the live production site (otherwise `robots.txt` blocks all crawling). Company phone, WhatsApp, email, offices and social links appear on the site only when marked verified in the database (`site_settings`, `company_offices`). Logo files are generated from `assets\brand\source\unavora-anant-real-estate-primary.png` with `python -I assets\brand\make_brand_assets.py`; the brand name, tagline, domain and logo paths live only in `apps/web/src/lib/brand.ts` (docs/BRAND_GUIDELINES.md); design review: [docs/UI_REVIEW.md](docs/UI_REVIEW.md).
 
 **Manual browser testing:** realistic synthetic CRM data and step-by-step test cases are in [docs/MANUAL_UI_TESTING.md](docs/MANUAL_UI_TESTING.md) (load/reset the data with `infra/local/manual-test-data.sql`).
 

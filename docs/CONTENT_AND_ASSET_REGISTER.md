@@ -10,15 +10,16 @@ Sources read: *Website Blueprint (Updated)* PDF, *Cursor master prompt* PDF, sup
 | Email | An older, obsolete address vs `info@anantinfrarealty.com` | `info@anantinfrarealty.com` is the company email, **verified 2026-11-12** (owner confirmed, CONTENT_READINESS_CHECKLIST); the obsolete address is not stored anywhere |
 | Mock-up data | Prices, counts, "RERA verified" badges in mock-up | Treated as placeholders; never seeded as real |
 | Copyright year | Hard-coded year | Dynamic |
-| Logo | Two marks (green-and-gold UAI vs gold IA monogram from the old mock-up) | **Decided 2026-11-08 (owner): the green-and-gold UAI logo is the official, final and permanent brand identity.** The IA monogram is not used |
+| Logo | Two marks (green-and-gold UAI vs gold IA monogram from the old mock-up) | **Decided 2026-11-08 (owner): the green-and-gold UAI logo is the official, final and permanent brand identity.** The IA monogram is not used — **superseded 2026-11-13** by the UNAVORA ANANT REAL ESTATE logo |
 
 ## Asset status
 | Asset | Status |
 |---|---|
-| Logo: official sheet | **APPROVED, FINAL** (owner, 2026-11-08). Original kept unchanged: `assets/brand/unavora-logo-sheet-original.jpg` (JPEG, 1280×853). Contains primary stacked logo, horizontal lockup, UAI monogram, monochrome version |
-| Logo: website files | DONE, derived without altering the artwork by `assets/brand/make_logo_assets.py` (crop to measured bounds, colour-to-alpha of the sheet's paper colour, proportional scaling only): `apps/web/public/brand/unavora-logo-horizontal.png` (473×119, header and footer), `unavora-mark.png` (382×372, compact mobile header), `unavora-logo-stacked.png` (976×547), `unavora-logo-monochrome.png` (306×177, for one-colour uses only); `apps/web/src/app/icon.png` (512×512), `apple-icon.png` (180×180, on #F7F5F0), `favicon.ico` (16/32/48), `opengraph-image.png` (1200×630, stacked logo on #F7F5F0) |
-| Logo: usage rules | Horizontal lockup in the website header and footer; UAI monogram for favicon/app icons and phones narrower than 360 px; monochrome only where a single colour is required. Proportions, colours, typography and tagline unchanged. Cut-outs come from a JPEG, so they are shown on light surfaces only (header on #F7F5F0; footer places the lockup on a warm-white plate on navy) |
-| Logo: vector master (SVG/AI/PDF) and reversed (on-dark) version | MISSING. Needed for print, large formats and a logo directly on navy; until then the PNG cut-outs above are used |
+| Logo (current) | **APPROVED, FINAL** (owner, 2026-11-13): UNAVORA ANANT REAL ESTATE horizontal green-and-gold UA logo, tagline "INVEST IN A BETTER LIVING". Source kept unchanged: `assets/brand/source/unavora-anant-real-estate-primary.png` (PNG 1200×411, RGB, cream background) |
+| Logo: website files | DONE by `assets/brand/make_brand_assets.py` (crop, background removal, scaling only): `apps/web/public/brand/unavora-anant-real-estate-logo.png` (+ `.webp`, `-on-cream.png`), `unavora-anant-real-estate-mark.png`, `icon-192.png`, `icon-512.png`; `apps/web/src/app/favicon.ico`, `icon.png`, `apple-icon.png`, `opengraph-image.png`, `twitter-image.png`; web manifest `apps/web/src/app/manifest.ts`. Paths and names only in `apps/web/src/lib/brand.ts` |
+| Logo: usage rules | See docs/BRAND_GUIDELINES.md: full logo in header/footer/account/staff screens, UA monogram below 360 px, always on a light surface (plate on navy), never recoloured or stretched |
+| Logo: vector master (SVG/AI/PDF) and reversed (on-dark) version | MISSING — requested from the designer; not fabricated |
+| Logo (superseded) | Green-and-gold UAI logo sheet of 2026-11-08 and its exports, ARCHIVED in `assets/brand/archive/uai-2026-11-08/` (not served; old generator disabled) |
 | Director portrait | MISSING as standalone file |
 | Property photographs | MISSING from the company (none invented). Local sample records use labelled representative photos (D-042). The website shows original code-drawn architectural illustrations (`apps/web/src/components/site/Art.tsx`), always labelled "Illustration", never presented as a real UNAVORA property. Photo slots for hero, about and channel-partner sections: `apps/web/src/lib/assets.ts` (company photos and licensed stock kept apart) |
 | Project details (names, RERA, floor plans) | MISSING |
@@ -56,7 +57,7 @@ Still illustrated (no photos may be used): property and project cards and detail
 | Testimonials | CRM → Website content → Testimonials (`cms.manage`) | published **and** display consent recorded (DB constraint) | **none** (no invented reviews) |
 | Featured listings | CRM → Website content → Featured listings (`property.publish`) | only published, available listings | one sample listing featured |
 | City introductions | CRM → Website content → City introductions (`cms.manage`) | published; city page exists only while the city has public listings | `[SAMPLE]` Lucknow intro |
-| Company facts and offices | CRM → Website content → Company facts (`settings.manage`) | only values marked verified | phone +91 83183 77108 and e-mail verified 2026-11-12; offices, hours, WhatsApp and social still pending |
+| Company facts and offices | CRM → Website content → Company facts (`settings.manage`) | only values marked verified | phone +91 91941 19150 (2026-11-14, replaces +91 83183 77108) and e-mail verified; offices, hours, WhatsApp and social still pending |
 | Owner submission photos | uploaded by owners on "List your property" | **never public**; staff only | created by tests only |
 
 Since round 2 (2026-11-10) also managed in the CRM: hero text/image, category tiles, homepage section order, SEO
@@ -81,3 +82,9 @@ developers, possession dates, addresses, RERA numbers or availability. Images co
 licence + alt text + approval). Local demo items (`infra/local/showcase/load_showcase_demo.py`, Unsplash images, generic
 wording) are marked `is_sample` and never public outside local/test. Production showcase text and images are still to
 be written or chosen and approved by the director.
+
+## Public brand change (owner, 2026-11-13)
+Public brand **UNAVORA ANANT REAL ESTATE**, tagline **INVEST IN A BETTER LIVING**, primary domain **uainfrarealestate.com**
+(not live yet). The registered legal name is a separate CRM field (`company.legal_name`, unverified, not shown) and is
+not replaced until the company confirms it from official records. Seeded Company facts moved to the new brand by
+migration V20 (display name, tagline; website recorded as unverified). Details: docs/BRAND_GUIDELINES.md.

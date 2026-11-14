@@ -30,3 +30,14 @@ unavora:
   otp:
     whatsapp.mode: ${WHATSAPP_OTP_MODE:mock}                  # MOCK: no WhatsApp message is sent
     secret: ${OTP_HMAC_SECRET:local-dev-otp-hmac-secret-not-a-secret}
+# LOCAL ONLY: Swagger UI at http://localhost:8080/swagger-ui.html (groups: public, staff, customer, BFF staff).
+springdoc:
+  api-docs.enabled: true
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+    operations-sorter: alpha
+    tags-sorter: alpha
+    display-request-duration: true
+    persist-authorization: true      # keeps the pasted token across page reloads (in this browser only)
+    try-it-out-enabled: true

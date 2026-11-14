@@ -36,12 +36,12 @@ export default async function ShowcaseListPage({ params, searchParams }: Props) 
       {rows.length === 0 ? <p className="text-sm">{sc.empty}</p> : (
         <ul className="grid gap-3" data-testid="showcase-rows">
           {rows.map((r) => (
-            <li key={r.id} className={`flex items-center gap-4 rounded-xl border border-slate/20 bg-white p-3 ${r.status === "archived" ? "opacity-60" : ""}`} data-testid="showcase-row">
+            <li key={r.id} className={`flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-slate/20 bg-white p-3 ${r.status === "archived" ? "opacity-60" : ""}`} data-testid="showcase-row">
               {r.imageMediaId
                 // eslint-disable-next-line @next/next/no-img-element
                 ? <img src={`/_bff/staff/cms-file?m=${r.imageMediaId}`} alt="" className="size-16 shrink-0 rounded bg-sand object-cover" />
                 : <span className="grid size-16 shrink-0 place-items-center rounded bg-sand text-[0.65rem] text-slate">{sc.noImage}</span>}
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 flex-1 basis-40">
                 <p className="truncate font-semibold">{r.titleEn}</p>
                 <p className="text-xs text-slate">{x.showcase.categories[r.category]} · {x.showcase.cta[r.cta]} · #{r.sortOrder}</p>
               </div>
