@@ -1,0 +1,133 @@
+# Reusable: build the environment's web image, deploy all containers to that environment's EC2 instance through
+# AWS Systems Manager, then smoke-test the public site. Called by deploy.yml only.
+#
+# The job runs in the GitHub environment named by `environment`. Give `production` a required reviewer (repository
+# Settings -> Environments) so production waits for a human approval (ARCHITECTURE §14, gate G4).
+# Environment variables (Settings -> Environments -> <env> -> Variables):
+#   SITE_URL         https://staging.example.in   (public origin, no trailing slash)
+#   EC2_INSTANCE_ID  i-0123456789abcdef0
+name: deploy-env
+on:
+  workflow_call:
+    inputs:
+      environment: { type: string, required: true }
+      sha: { type: string, required: true }
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    name: Deploy ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    environment:
+      name: ${{ inputs.environment }}
+      url: ${{ vars.SITE_URL }}
+    env:
+      ENVIRONMENT: ${{ inputs.environment }}
+      SHA: ${{ inputs.sha }}
+      REGISTRY: ${{ vars.ECR_REGISTRY }}
+      SITE_URL: ${{ vars.SITE_URL }}
+      INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
+      AWS_REGION: ${{ vars.AWS_REGION }}
+    steps:
+      - name: Check environment settings
+        run: |
+          for v in REGISTRY SITE_URL INSTANCE_ID AWS_REGION; do
+            [ -n "${!v}" ] || { echo "::error::Variable for $v is not set (repository or '$ENVIRONMENT' environment)"; exit 1; }
+          done
+          case "$SITE_URL" in https://*) ;; *) echo "::error::SITE_URL must start with https://"; exit 1;; esac
+      - uses: actions/checkout@v7
+        with: { ref: "${{ inputs.sha }}" }
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - uses: aws-actions/amazon-ecr-login@v2
+      - uses: docker/setup-buildx-action@v3
+
+      # next.config.ts reads MEDIA_PUBLIC_URL at build time (allowed image origin), so each environment has its own
+      # web image, tagged <sha>-<environment>.
+      - id: web
+        run: |
+          tag="${SHA}-${ENVIRONMENT}"
+          echo "image=${REGISTRY}/unavora-web:${tag}" >> "$GITHUB_OUTPUT"
+          if aws ecr describe-images --repository-name unavora-web --image-ids imageTag="$tag" > /dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Web image
+        if: steps.web.outputs.exists != 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: apps/web
+          push: true
+          tags: ${{ steps.web.outputs.image }}
+          build-args: |
+            NEXT_PUBLIC_SITE_URL=${{ vars.SITE_URL }}
+            MEDIA_PUBLIC_URL=${{ vars.SITE_URL }}/media/
+          cache-from: type=gha,scope=web-${{ inputs.environment }}
+          cache-to: type=gha,scope=web-${{ inputs.environment }},mode=max
+          provenance: false
+
+      - name: Deploy through Systems Manager
+        env:
+          API_IMAGE: ${{ env.REGISTRY }}/unavora-api:${{ inputs.sha }}
+          EDGE_IMAGE: ${{ env.REGISTRY }}/unavora-edge:${{ inputs.sha }}
+          WEB_IMAGE: ${{ steps.web.outputs.image }}
+        run: |
+          # The instance pulls the edge image, copies the deployment bundle (compose.yaml, deploy.sh) out of it into a
+          # release folder and runs deploy.sh. Images are referenced by immutable commit tags.
+          script=$(cat <<EOF
+          set -euo pipefail
+          export AWS_REGION='${AWS_REGION}'
+          aws ecr get-login-password --region '${AWS_REGION}' | docker login --username AWS --password-stdin '${REGISTRY}'
+          docker pull '${EDGE_IMAGE}'
+          rel='/opt/unavora/releases/${SHA}'
+          rm -rf "\$rel" && mkdir -p "\$rel"
+          cid=\$(docker create '${EDGE_IMAGE}')
+          docker cp "\$cid:/bundle/." "\$rel/"
+          docker rm "\$cid" > /dev/null
+          bash "\$rel/deploy.sh" '${ENVIRONMENT}' '${API_IMAGE}' '${WEB_IMAGE}' '${EDGE_IMAGE}'
+          EOF
+          )
+          params=$(jq -n --arg s "$script" '{commands: [$s], executionTimeout: ["1800"]}')
+          command_id=$(aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name AWS-RunShellScript \
+            --comment "unavora ${ENVIRONMENT} ${SHA:0:12}" \
+            --parameters "$params" \
+            --query Command.CommandId --output text)
+          echo "SSM command $command_id"
+
+          # Poll (the CLI waiter gives up after ~100 s; a deployment can take several minutes).
+          status=Pending
+          for _ in $(seq 1 180); do
+            sleep 10
+            status=$(aws ssm get-command-invocation --command-id "$command_id" --instance-id "$INSTANCE_ID" \
+              --query Status --output text 2>/dev/null || echo Pending)
+            case "$status" in Pending|InProgress|Delayed) continue;; *) break;; esac
+          done
+          aws ssm get-command-invocation --command-id "$command_id" --instance-id "$INSTANCE_ID" \
+            --query StandardOutputContent --output text || true
+          echo "----- stderr -----"
+          aws ssm get-command-invocation --command-id "$command_id" --instance-id "$INSTANCE_ID" \
+            --query StandardErrorContent --output text || true
+          [ "$status" = "Success" ] || { echo "::error::Deployment on $INSTANCE_ID ended with status $status"; exit 1; }
+
+      - name: Smoke test (public site through nginx and TLS)
+        run: |
+          for path in /en /hi /robots.txt; do
+            ok=false
+            for _ in $(seq 1 12); do
+              if curl -fsS -o /dev/null --max-time 15 "${SITE_URL}${path}"; then ok=true; break; fi
+              sleep 5
+            done
+            $ok || { echo "::error::${SITE_URL}${path} is not answering"; exit 1; }
+            echo "OK ${SITE_URL}${path}"
+          done
+          # The API's internal routes and the actuator must never be reachable from the internet.
+          for path in /internal/v1/staff-auth/session /actuator/health /api/v1/public/properties; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "${SITE_URL}${path}")
+            case "$code" in 404|403) echo "OK ${path} -> ${code}";; *) echo "::error::${path} answered ${code} (expected 404)"; exit 1;; esac
+          done

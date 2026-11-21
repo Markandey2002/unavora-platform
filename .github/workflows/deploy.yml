@@ -1,0 +1,118 @@
+# UNAVORA ANANT INFRA - deployment to one EC2 instance per environment (decision D-044, docs/DEPLOYMENT_EC2.md).
+#
+#   green `ci` run on a push to main -> build images (ECR, immutable commit tags) -> STAGING (automatic)
+#                                     -> PRODUCTION (waits for a required reviewer on the `production` environment)
+#
+# No AWS keys are stored: GitHub OIDC assumes AWS_DEPLOY_ROLE_ARN. The instance pulls the images and its secrets
+# (SSM Parameter Store /unavora/<env>/...) itself; commands reach it through AWS Systems Manager, not SSH.
+# Nothing here creates AWS resources; the one-time setup is in docs/DEPLOYMENT_EC2.md.
+name: deploy
+on:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "Commit on main to (re)deploy. Empty = tip of main. Still goes staging -> approval -> production."
+        required: false
+        default: ""
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  # One deployment at a time; never cancel a deployment that is already running.
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  resolve:
+    name: Resolve commit
+    # Only green CI runs for pushes to main (not PR runs), or a manual run.
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      sha: ${{ steps.sha.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with: { fetch-depth: 0, ref: main }
+      - id: sha
+        env:
+          RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+          INPUT_SHA: ${{ inputs.sha }}
+        run: |
+          sha="${RUN_SHA:-${INPUT_SHA:-$(git rev-parse HEAD)}}"
+          sha="$(git rev-parse --verify "${sha}^{commit}")"
+          # Only commits that are on main can be deployed.
+          git merge-base --is-ancestor "$sha" origin/main || { echo "::error::$sha is not on main"; exit 1; }
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "Deploying $sha"
+
+  images:
+    name: Build API and edge images
+    needs: resolve
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SHA: ${{ needs.resolve.outputs.sha }}
+      REGISTRY: ${{ vars.ECR_REGISTRY }}
+    steps:
+      - uses: actions/checkout@v7
+        with: { ref: "${{ needs.resolve.outputs.sha }}" }
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - uses: aws-actions/amazon-ecr-login@v2
+      - uses: docker/setup-buildx-action@v3
+      # Tags are immutable: a re-deploy of the same commit reuses the image that was already pushed.
+      - id: exists
+        run: |
+          for repo in unavora-api unavora-edge; do
+            if aws ecr describe-images --repository-name "$repo" --image-ids imageTag="$SHA" > /dev/null 2>&1; then
+              echo "$repo=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "$repo=false" >> "$GITHUB_OUTPUT"
+            fi
+          done
+      - name: API image
+        if: steps.exists.outputs.unavora-api != 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: services/api
+          push: true
+          tags: ${{ env.REGISTRY }}/unavora-api:${{ env.SHA }}
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,scope=api,mode=max
+          provenance: false
+      - name: Edge image (nginx + certificate selection + deployment bundle)
+        if: steps.exists.outputs.unavora-edge != 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: infra/ec2
+          file: infra/ec2/edge.Dockerfile
+          push: true
+          tags: ${{ env.REGISTRY }}/unavora-edge:${{ env.SHA }}
+          provenance: false
+
+  staging:
+    name: Staging
+    needs: [resolve, images]
+    uses: ./.github/workflows/deploy-env.yml
+    with:
+      environment: staging
+      sha: ${{ needs.resolve.outputs.sha }}
+    secrets: inherit
+
+  production:
+    name: Production (manual approval)
+    needs: [resolve, staging]
+    uses: ./.github/workflows/deploy-env.yml
+    with:
+      environment: production
+      sha: ${{ needs.resolve.outputs.sha }}
+    secrets: inherit

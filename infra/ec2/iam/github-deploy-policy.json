@@ -1,0 +1,46 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "EcrLogin",
+      "Effect": "Allow",
+      "Action": "ecr:GetAuthorizationToken",
+      "Resource": "*"
+    },
+    {
+      "Sid": "EcrPushUnavoraImages",
+      "Effect": "Allow",
+      "Action": [
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:BatchGetImage",
+        "ecr:CompleteLayerUpload",
+        "ecr:DescribeImages",
+        "ecr:GetDownloadUrlForLayer",
+        "ecr:InitiateLayerUpload",
+        "ecr:PutImage",
+        "ecr:UploadLayerPart"
+      ],
+      "Resource": [
+        "arn:aws:ecr:REGION:ACCOUNT_ID:repository/unavora-api",
+        "arn:aws:ecr:REGION:ACCOUNT_ID:repository/unavora-web",
+        "arn:aws:ecr:REGION:ACCOUNT_ID:repository/unavora-edge"
+      ]
+    },
+    {
+      "Sid": "RunDeployCommandOnUnavoraInstancesOnly",
+      "Effect": "Allow",
+      "Action": "ssm:SendCommand",
+      "Resource": [
+        "arn:aws:ssm:REGION::document/AWS-RunShellScript",
+        "arn:aws:ec2:REGION:ACCOUNT_ID:instance/STAGING_INSTANCE_ID",
+        "arn:aws:ec2:REGION:ACCOUNT_ID:instance/PRODUCTION_INSTANCE_ID"
+      ]
+    },
+    {
+      "Sid": "ReadDeployCommandResult",
+      "Effect": "Allow",
+      "Action": ["ssm:GetCommandInvocation", "ssm:ListCommandInvocations"],
+      "Resource": "*"
+    }
+  ]
+}

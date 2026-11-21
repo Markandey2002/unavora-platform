@@ -1,0 +1,86 @@
+# UNAVORA ANANT INFRA - containers on one EC2 instance (staging or production). Started only by deploy.sh, which
+# writes .env next to this file (image tags, domain) and the secret env files in /opt/unavora/shared (mode 600).
+# PostgreSQL is Amazon RDS (DB_URL in the API env file); nothing here stores application data except the media folders.
+name: unavora
+
+x-logging: &logging
+  driver: json-file
+  options: { max-size: "10m", max-file: "5" }
+
+services:
+  api:
+    image: ${API_IMAGE:?}
+    restart: unless-stopped
+    env_file: [/opt/unavora/shared/api.env]
+    environment:
+      SPRING_PROFILES_ACTIVE: ${UNAVORA_ENV:?}
+      # Interim local-disk storage (until S3 + CDN): private originals and approved public media.
+      UNAVORA_FILES_PRIVATE_DIR: /app/data/private-uploads
+      UNAVORA_MEDIA_PUBLIC_DIR: /app/data/public-media
+      UNAVORA_MEDIA_PUBLIC_BASE_URL: https://${DOMAIN:?}/media
+      JAVA_TOOL_OPTIONS: -Duser.timezone=UTC
+    volumes:
+      - /srv/unavora/data:/app/data
+    ports:
+      - "127.0.0.1:8081:8081"     # actuator, for deploy.sh health checks on the instance only
+    mem_limit: ${API_MEM_LIMIT:-1g}
+    logging: *logging
+
+  web:
+    image: ${WEB_IMAGE:?}
+    restart: unless-stopped
+    depends_on: [api]
+    env_file: [/opt/unavora/shared/web.env]
+    environment:
+      API_INTERNAL_URL: http://api:8080
+      SITE_URL: https://${DOMAIN:?}
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+    ports:
+      - "127.0.0.1:3000:3000"     # for deploy.sh health checks; the internet reaches it only through nginx
+    mem_limit: ${WEB_MEM_LIMIT:-768m}
+    logging: *logging
+
+  nginx:
+    image: ${EDGE_IMAGE:?}
+    restart: unless-stopped
+    depends_on: [web]
+    environment:
+      DOMAIN: ${DOMAIN:?}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /srv/unavora/letsencrypt:/etc/letsencrypt:ro
+      - /srv/unavora/acme:/var/www/acme:ro
+      - /srv/unavora/data/public-media:/srv/media:ro
+    mem_limit: 128m
+    logging: *logging
+
+  certbot:
+    image: certbot/certbot:v3.0.1
+    restart: unless-stopped
+    depends_on: [nginx]
+    environment:
+      DOMAIN: ${DOMAIN:?}
+      ACME_EMAIL: ${ACME_EMAIL:?}
+    volumes:
+      - /srv/unavora/letsencrypt:/etc/letsencrypt
+      - /srv/unavora/acme:/var/www/acme
+    # Obtain the certificate once DNS points here, then try a renewal twice a day (certbot only renews near expiry).
+    # nginx picks the new files up by itself (40-unavora-tls.sh).
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        trap exit TERM
+        while :; do
+          if certbot certonly --webroot -w /var/www/acme -d "$$DOMAIN" --email "$$ACME_EMAIL" \
+               --agree-tos --no-eff-email --non-interactive --keep-until-expiring; then
+            sleep 12h & wait $$!
+          else
+            echo "certbot: failed (is DNS for $$DOMAIN pointing at this instance?); retrying in 5 minutes"
+            sleep 300 & wait $$!
+          fi
+        done
+    mem_limit: 128m
+    logging: *logging
