@@ -1,5 +1,36 @@
-import { expect, test } from "@playwright/test";
+import path from "node:path";
+import { expect, test, type Page } from "@playwright/test";
 import { signIn, signOut } from "./staff-helpers";
+
+const E2E_IMAGE_ALT = "E2E showcase image (residential tower)";
+
+/** A fresh database (CI) has an empty image library: make sure one approved image exists, reusing an earlier run's. */
+async function ensureApprovedLibraryImage(page: Page) {
+  await page.goto("/en/staff/content/library");
+  const ours = page.getByTestId("library-item").filter({ has: page.locator(`input[name="altEn"][value="${E2E_IMAGE_ALT}"]`) });
+  const live = ours.filter({ has: page.locator('button[name="action"][value="unapprove"]') });
+  if ((await live.count()) > 0) return;
+
+  if ((await ours.count()) === 0) {
+    const upload = page.getByTestId("library-upload");
+    await upload.locator('input[name="file"]').setInputFiles(path.join(__dirname, "..", "public", "images", "representative", "residential.jpg"));
+    await upload.locator('select[name="kind"]').selectOption("representative");
+    await upload.locator('input[name="altEn"]').fill(E2E_IMAGE_ALT);
+    await upload.locator('input[name="credit"]').fill("Unsplash");
+    await upload.locator('input[name="licence"]').fill("Unsplash License (e2e test image)");
+    await upload.getByRole("button").click();
+    await expect(page).toHaveURL(/\/en\/staff\/content\/library\?saved=1/);
+  }
+
+  // Approval needs a clean malware scan (mock scanner in the local profile); reload until the button is enabled.
+  const approve = ours.first().locator('button[name="action"][value="approve"]');
+  await expect(async () => {
+    await page.reload();
+    await expect(approve).toBeEnabled({ timeout: 1_000 });
+  }).toPass({ timeout: 30_000, intervals: [2_000] });
+  await approve.click();
+  await expect(ours.first().locator('button[name="action"][value="unapprove"]')).toBeVisible();
+}
 
 // CRM → Website content → Showcase: the director creates an illustrative item, publishes it, edits Hindi text, replaces
 // the image, links a real published listing and finally archives it (e2e tests archive what they publish).
@@ -8,6 +39,7 @@ test("director replaces showcase content through the CMS without code changes", 
   test.setTimeout(240_000);
   const title = `E2E showcase ${Date.now()}`;
   await signIn(page, "director");
+  await ensureApprovedLibraryImage(page);
 
   await page.goto("/en/staff/content");
   await page.getByRole("link", { name: /Showcase/ }).click();
@@ -27,6 +59,7 @@ test("director replaces showcase content through the CMS without code changes", 
   await page.getByRole("button", { name: "Publish" }).click();
   await expect(page.getByTestId("form-error")).toContainText("approved image");
   const approved = page.getByTestId("showcase-images").locator("label").filter({ hasNotText: "not approved" });
+  await expect(approved.first()).toBeVisible({ timeout: 10_000 });
   await approved.first().click();
   await page.getByLabel("Position (lower comes first)").fill("0");
   await page.getByRole("button", { name: "Save" }).click();
