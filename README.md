@@ -175,5 +175,8 @@ Same steps, using the bash forms: `cp .env.example .env`, `docker compose up -d 
 ## Layout
 `apps/web` Next.js (pages, `/_bff` auth routes, server actions) · `apps/mobile` (reserved) · `services/api` Spring Boot + Flyway (modules `properties`, `crm`, `customers`, `identity`, `reporting`, `platform`) · `contracts/openapi` · `infra/local` (Keycloak realm, validation scripts) · `.github/workflows/ci.yml` · `docs`. CI runs on every push and pull request to `main` in the private GitHub repository `Markandey2002/unavora-platform` (secret scan, API, web, end-to-end).
 
+## Deployment (EC2)
+`.github/workflows/deploy.yml` deploys after a green CI run on `main`: staging automatically, production after a required reviewer approves. Each environment is one EC2 instance running Docker Compose (nginx with Let's Encrypt → Next.js → API) against Amazon RDS. Images go to ECR and commands arrive through AWS Systems Manager; GitHub stores no AWS keys. Files are in `infra/ec2`. One-time AWS setup, SSM parameters and operations: `docs/DEPLOYMENT_EC2.md` (decision D-044). Nothing has been created in AWS yet.
+
 ## Rules
 Synthetic data only outside production. Secrets never go in git; the local values are throw-away. No AWS deployment, real Google OAuth or real WhatsApp provider until explicitly approved. Mock modes must never be enabled in staging or production; those profiles have no defaults, so startup fails if a mode is not set explicitly.
